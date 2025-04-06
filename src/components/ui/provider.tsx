@@ -1,7 +1,6 @@
 'use client'
 
 import { ChakraProvider, extendTheme } from '@chakra-ui/react'
-import { MotionConfig } from 'motion/react'
 
 // Define the initial theme based on brand guidelines
 const theme = extendTheme({
