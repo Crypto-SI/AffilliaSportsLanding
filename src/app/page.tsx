@@ -10,6 +10,7 @@ import ServicesSection from '@/components/home/ServicesSection';
 import StatsSection from '@/components/home/StatsSection';
 import PhilosophySection from '@/components/home/PhilosophySection';
 import PlayerPortalSection from '@/components/home/PlayerPortalSection';
+import FinancialAdviceSection from '@/components/home/FinancialAdviceSection';
 import SplashScreen from '@/components/intro/SplashScreen';
 
 export default function Home() {
@@ -31,6 +32,7 @@ export default function Home() {
         <PhilosophySection />
         <PlayerPortalSection />
         <ServicesSection />
+        <FinancialAdviceSection />
         {/* Commented out as requested */}
         {/* <HighlightsSection /> */}
         {/* <StatsSection /> */}

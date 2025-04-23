@@ -10,11 +10,11 @@ export default function HeroSection() {
   return (
     <Box
       as="section"
-      pt={0}
+      pt={{ base: "80px", md: "100px" }}
       pb={32}
       position="relative"
       overflow="hidden"
-      height={{ base: "calc(100vh - 80px)", md: "calc(100vh - 40px)" }}
+      height={{ base: "calc(100vh - 0px)", md: "calc(100vh - 0px)" }}
       minHeight="600px"
     >
       {/* Main Hero Background Image */}
@@ -78,7 +78,7 @@ export default function HeroSection() {
       <Box
         position="absolute"
         right={{ base: "-50px", md: "0", lg: "100px" }}
-        bottom={{ base: "150px", md: "200px", lg: "250px" }}
+        bottom={{ base: "50px", md: "80px", lg: "100px" }}
         height={{ base: "300px", md: "500px", lg: "600px" }}
         width={{ base: "250px", md: "400px", lg: "500px" }}
         zIndex={2}
@@ -110,7 +110,13 @@ export default function HeroSection() {
       </Box>
 
       <Container maxW="1240px" position="relative" zIndex={3} h="100%" display="flex" alignItems="center">
-        <VStack spacing={8} align="flex-start" maxW="647px" mt={{ base: "80px", md: "0" }}>
+        <VStack 
+          spacing={8} 
+          align="flex-start" 
+          maxW="647px" 
+          mt={{ base: "120px", md: "140px" }}
+          pt={{ base: "40px", md: "0" }}
+        >
           <AnimatedText
             as="h1"
             fontSize={{ base: "4xl", md: "6xl", lg: "7xl" }}

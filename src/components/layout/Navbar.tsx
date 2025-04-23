@@ -81,7 +81,8 @@ export default function Navbar() {
                   { name: 'About Us', id: 'about' },
                   { name: 'Philosophy', id: 'philosophy' },
                   { name: 'Player Portal', id: 'player-portal' },
-                  { name: 'Services', id: 'services' }
+                  { name: 'Services', id: 'services' },
+                  { name: 'Financial Advisors', id: 'financial-advice' }
                 ].map((link, index) => (
                   <motion.div 
                     key={link.id}
