@@ -314,9 +314,7 @@ export default function AboutSection() {
                       color="neutral.500"
                       delay={1.2}
                     >
-                      A former professional player with an illustrious career spanning 15 years, Carl brings 
-                      first-hand experience to Affillia Sports. His extensive network across European leagues 
-                      and deep understanding of player needs creates unmatched value for our clients.
+                      Carl is a tech entrepreneur with a passion for football who is always looking for a new challenge. His business acumen, patience, and vision are a great asset to Affillia Sports, helping drive the agency forward in innovative ways.
                     </AnimatedText>
                   </Box>
                 </Flex>

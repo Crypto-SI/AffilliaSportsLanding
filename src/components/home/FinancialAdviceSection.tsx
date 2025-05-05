@@ -1,9 +1,10 @@
 'use client';
 
-import { Box, Text, Container, Flex, Heading, VStack } from '@chakra-ui/react';
+import { Box, Text, Container, Flex, Heading, VStack, Link } from '@chakra-ui/react';
 import Image from 'next/image';
 import { motion } from 'motion/react';
 import React, { ReactNode } from 'react';
+import { ExternalLinkIcon } from '@chakra-ui/icons';
 
 // Define our own simpler animation components to avoid linter errors
 const MotionBox = motion(Box);
@@ -65,6 +66,7 @@ interface AdvisorCardProps {
   description: string;
   imageSrc: string;
   imageAlt: string;
+  websiteUrl?: string;
   isReversed?: boolean;
   animationDelay?: number;
 }
@@ -75,6 +77,7 @@ const AdvisorCard: React.FC<AdvisorCardProps> = ({
   description,
   imageSrc,
   imageAlt,
+  websiteUrl,
   isReversed = false,
   animationDelay = 0
 }) => {
@@ -100,7 +103,7 @@ const AdvisorCard: React.FC<AdvisorCardProps> = ({
             src={imageSrc}
             alt={imageAlt}
             fill
-            style={{ objectFit: 'cover' }}
+            style={{ objectFit: 'cover', objectPosition: 'center top' }}
             sizes="(max-width: 768px) 200px, 250px"
             priority
           />
@@ -130,6 +133,19 @@ const AdvisorCard: React.FC<AdvisorCardProps> = ({
           >
             {description}
           </Text>
+          
+          {websiteUrl && (
+            <Link 
+              href={websiteUrl} 
+              isExternal 
+              color="brand.500" 
+              textDecoration="underline"
+              fontSize="sm"
+              mt={1}
+            >
+              Visit Website <ExternalLinkIcon mx="2px" />
+            </Link>
+          )}
         </VStack>
       </Flex>
     </AnimatedBox>
@@ -139,18 +155,20 @@ const AdvisorCard: React.FC<AdvisorCardProps> = ({
 export default function FinancialAdviceSection() {
   const advisors = [
     {
-      name: "Sarah Mitchell",
-      title: "Wealth Management Director",
-      description: "With over 15 years specializing in athlete wealth management, Sarah has helped hundreds of players build sustainable financial foundations. Her expertise in tax optimization, investment strategies, and retirement planning provides our clients with comprehensive financial security both during and after their playing careers.",
-      imageSrc: "/images/10.png",
-      imageAlt: "Sarah Mitchell, Financial Advisor"
+      name: "Matthew Jones, DipPFS",
+      title: "Director of Apex Financial Services",
+      description: "Matthew is dedicated to providing expert financial advice characterized by quality, integrity, and excellence. He focuses on building lasting relationships with his clients, ensuring their financial peace of mind. Matthew specializes in retirement planning, long-term care, and advising business owners, company directors, financial professionals, and private clients.",
+      imageSrc: "/images/matt.png",
+      imageAlt: "Matthew Jones, Financial Advisor",
+      websiteUrl: "https://partnership.sjp.co.uk/apexfinancialservices/"
     },
     {
-      name: "Marcus Johnson",
-      title: "Investment & Real Estate Specialist",
-      description: "Marcus combines his background in finance and real estate to create diversified investment portfolios for elite athletes. His innovative approach to wealth building focuses on long-term assets, passive income streams, and strategic real estate acquisitions that maximize returns while managing risk.",
-      imageSrc: "/images/8.png",
-      imageAlt: "Marcus Johnson, Financial Strategist"
+      name: "Paul Wilson, DipPFS",
+      title: "Wealth Management Partner at True Potential LLP",
+      description: "Paul brings a unique perspective to financial planning, drawing on his experience as a Mortgage & Protection Advisor. He is passionate about building strong client relationships and crafting tailored strategies to help individuals secure their financial future.",
+      imageSrc: "/images/paul.png",
+      imageAlt: "Paul Wilson, Financial Advisor",
+      websiteUrl: "https://www.truepotential.co.uk/"
     }
   ];
 
