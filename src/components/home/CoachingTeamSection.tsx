@@ -187,7 +187,7 @@ export default function CoachingTeamSection() {
               mb={6}
               color="neutral.900"
             >
-              Coaching & Scouting Team
+              Coaching and Scouting Connections
             </Heading>
             <Text
               fontSize="lg"
@@ -195,7 +195,7 @@ export default function CoachingTeamSection() {
               mx="auto"
               color="neutral.500"
             >
-              Meet the experts dedicated to maximizing player potential on and off the field. Our coaches and scouts provide top-tier training, development, and talent identification.
+              Meet the experts who we trust, we work closely with these people to ensure our clients get the best service and that we identify the absolute best opportunites.
             </Text>
           </Box>
         </AnimatedBox>

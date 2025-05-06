@@ -185,7 +185,7 @@ export default function FinancialAdviceSection() {
               mb={6}
               color="neutral.900"
             >
-              Financial Advisory Team
+              Trusted Financial Advisors
             </Heading>
             
             <Text
@@ -194,7 +194,7 @@ export default function FinancialAdviceSection() {
               mx="auto"
               color="neutral.500"
             >
-              Expert financial guidance tailored for professional athletes. Our advisors help you secure your future and make smart investments throughout your career and beyond.
+              Expert financial guidance tailored for professional athletes. Our fully qualified trusted advisors help you secure your future and make smart investments throughout your career and beyond.
             </Text>
           </Box>
         </AnimatedBox>
