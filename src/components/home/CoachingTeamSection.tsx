@@ -143,34 +143,34 @@ const CoachCard: React.FC<CoachCardProps> = ({
 export default function CoachingTeamSection() {
   const coaches = [
     {
-      name: "Jude Sterling",
-      position: "Head Performance Coach",
-      description: "Jude brings over 10 years of experience in elite athlete training, focusing on peak physical conditioning and injury prevention.",
-      imageSrc: "/images/jude.png", // Updated image
-      imageAlt: "Jude Sterling, Head Performance Coach",
-      websiteUrl: "#" // Placeholder link
+      name: 'Jude Stirling',
+      position: 'Coach/Scout - London Elite M/F U6s/U16s',
+      description: "Jude is one of the directors of London Elite, based in Broadwater farm north london, with a spectacular catchment area, having coached dozens of professionals, Judes commitment to giving pro footballers the best start is unwaivering, along with his fathers Classford Stirling MBE.",
+      imageSrc: '/images/jude.png',
+      imageAlt: 'Jude Stirling, Coach/Scout',
+      websiteUrl: "#"
     },
     {
       name: "Poku Kesse",
       position: "Lead Talent Scout",
-      description: "With a keen eye for potential, Poku identifies and nurtures the next generation of football stars across the globe.",
-      imageSrc: "/images/poku.png", // Updated image
+      description: "Poku's journey in football reached high semi pro level, but it was his love for fitness and business where he really shone, having cultivated his own personal training business over many years he joins Affillia Sports as a qualified football scout, with extensive ties to West african football. His experience of multiple cultures and their business settings makes him invaluable in our mission",
+      imageSrc: "/images/poku.png",
       imageAlt: "Poku Kesse, Lead Talent Scout"
     },
     {
       name: "Paul Yeadon",
       position: "Technical Skills Coach",
-      description: "Paul specializes in refining technical abilities, helping players master ball control, passing, and shooting accuracy.",
-      imageSrc: "/images/yeadaz.png", // Updated image
+      description: "Affectionately known as Yeadaz, Paul is our man in the northeast, having worked tirelessly for his boyhood club Newcastle united, he found his home in the womens game, his dedication and vision for the womens game is unmatched, he has strong ties to the north american womens game also.",
+      imageSrc: "/images/yeadaz.png",
       imageAlt: "Paul Yeadon, Technical Skills Coach",
-      websiteUrl: "#" // Placeholder link
+      websiteUrl: "#"
     },
     {
       name: "Anton Jacob",
-      position: "Youth Development Scout",
-      description: "Anton focuses on grassroots talent, identifying promising young players and guiding them through early career stages.",
-      imageSrc: "/images/anthon.png", // Updated image
-      imageAlt: "Anton Jacob, Youth Development Scout"
+      position: "Manager",
+      description: "Anton is a highly respected coach from east anglia, having coached many young professionals and an incredible amount of academy level prospects, Anton is advancing his managerial career. Qualified to Uefa B level, he's currently studying for his A while managing in the English Non-league",
+      imageSrc: "/images/anthon.png",
+      imageAlt: "Anton Jacob, Manager"
     }
   ];
 
