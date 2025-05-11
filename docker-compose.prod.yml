@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: affilliasports:prod
+    container_name: affilliasports-production
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    # Production optimizations
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    # No volumes needed for production 

@@ -165,7 +165,7 @@ export default function FinancialAdviceSection() {
     {
       name: "Paul Wilson, DipPFS",
       title: "Wealth Management Partner at True Potential LLP",
-      description: "Paul brings a unique perspective to financial planning, drawing on his experience as a Mortgage & Protection Advisor. He is passionate about building strong client relationships and crafting tailored strategies to help individuals secure their financial future.",
+      description: "Paul is a trusted financial adviser focused on helping clients achieve long-term security through tailored retirement and investment strategies. With a client-first approach, he provides clear, practical guidance on everything from income planning to wealth protection, empowering individuals and families to make confident financial decisions.",
       imageSrc: "/images/paul.png",
       imageAlt: "Paul Wilson, Financial Advisor",
       websiteUrl: "https://www.truepotential.co.uk/"

@@ -9,4 +9,7 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-    restart: always 
+    restart: unless-stopped
+    # Production doesn't need volumes as code is built into the image
+
+  # The rest of the file remains unchanged 

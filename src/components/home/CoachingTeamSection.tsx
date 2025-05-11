@@ -96,7 +96,10 @@ const CoachCard: React.FC<CoachCardProps> = ({
             src={imageSrc}
             alt={imageAlt}
             fill
-            style={{ objectFit: 'cover', objectPosition: 'center top' }} // Keep top alignment
+            style={{ 
+              objectFit: 'cover', 
+              objectPosition: imageSrc.includes('qm.png') ? 'center center' : 'center top' 
+            }}
             sizes="150px"
             priority // Load images eagerly if they are important
           />
@@ -158,12 +161,12 @@ export default function CoachingTeamSection() {
       imageAlt: "Poku Kesse, Lead Talent Scout"
     },
     {
-      name: "Paul Yeadon",
-      position: "Technical Skills Coach",
-      description: "Affectionately known as Yeadaz, Paul is our man in the northeast, having worked tirelessly for his boyhood club Newcastle united, he found his home in the womens game, his dedication and vision for the womens game is unmatched, he has strong ties to the north american womens game also.",
-      imageSrc: "/images/yeadaz.png",
-      imageAlt: "Paul Yeadon, Technical Skills Coach",
-      websiteUrl: "#"
+      name: "You?",
+      position: "Future Collaborator - High Agency Prospect",
+      description: "This spot could be yours! We're looking to collaborate with ambitious, high-agency individuals in the football world. If you are proactive, passionate, and want to make a real impact, reach out to us. Let's build something great together.",
+      imageSrc: "/images/qm.png",
+      imageAlt: "Your photo here - Join our team!",
+      websiteUrl: "mailto:info@affilliasports.com"
     },
     {
       name: "Anton Jacob",

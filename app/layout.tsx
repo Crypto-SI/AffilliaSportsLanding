@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Inter, Alice } from "next/font/google";
 import "./globals.css";
 import { Provider } from "@/components/ui/provider";
-import Script from "next/script";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -44,11 +43,6 @@ export default function RootLayout({
         className={`${inter.variable} ${alice.variable} antialiased`}
       >
         <Provider>{children}</Provider>
-        <Script
-          defer
-          data-domain="affilliasports.com"
-          src="https://stats.affilliasports.com/js/script.js"
-        />
       </body>
     </html>
   );

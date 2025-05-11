@@ -13,6 +13,8 @@ const nextConfig = {
   images: {
     domains: ['localhost'],
   },
+  // The src/app directory is the default in Next.js 15+
+  // No need to set appDir: true, as that was for older versions
 };
 
 module.exports = nextConfig; 
