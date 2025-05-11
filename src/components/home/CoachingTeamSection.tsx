@@ -157,7 +157,7 @@ export default function CoachingTeamSection() {
       name: "Poku Kesse",
       position: "Lead Talent Scout",
       description: "Poku's journey in football reached high semi pro level, but it was his love for fitness and business where he really shone, having cultivated his own personal training business over many years he joins Affillia Sports as a qualified football scout, with extensive ties to West african football. His experience of multiple cultures and their business settings makes him invaluable in our mission",
-      imageSrc: "/images/poku.png",
+      imageSrc: "/images/POKU.png",
       imageAlt: "Poku Kesse, Lead Talent Scout"
     },
     {
