@@ -174,9 +174,6 @@ export default function Footer() {
                 Affillia Sports
               </Text>
               <Text fontSize="sm" color="whiteAlpha.800">
-                +44 (0) 20 XXXX XXXX
-              </Text>
-              <Text fontSize="sm" color="whiteAlpha.800">
                 contact@affiliasports.com
               </Text>
             </MotionVStack>

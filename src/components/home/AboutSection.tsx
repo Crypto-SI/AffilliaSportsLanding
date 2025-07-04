@@ -218,11 +218,12 @@ export default function AboutSection() {
                     flexShrink={0}
                   >
                     <Image
-                      src="/images/optimized/about/large/about-founder-portrait.webp"
-                      alt="James Flood, Founder"
+                      src="/images/tommy.png"
+                      alt="Tom White, Founder"
                       fill
                       style={{ 
                         objectFit: 'cover',
+                        objectPosition: 'center top',
                       }}
                       sizes="(max-width: 768px) 200px, 250px"
                       priority
@@ -238,7 +239,7 @@ export default function AboutSection() {
                       color="neutral.900"
                       delay={0.8}
                     >
-                      James Flood
+                      Tom White
                     </AnimatedText>
                     <AnimatedText 
                       as="h5" 
@@ -248,14 +249,14 @@ export default function AboutSection() {
                       mb={2}
                       delay={0.9}
                     >
-                      Co-Founder & Media Director
+                      Licensed players agent
                     </AnimatedText>
                     <AnimatedText 
                       fontSize="md" 
                       color="neutral.500"
                       delay={1.0}
                     >
-                      A distinguished figure in sports journalism for over 18 years, James brings exceptional media 
+                      A distinguished figure in sports journalism for over 18 years, Tom brings exceptional media 
                       connections and strategic insight to Affillia Sports. His background in player psychology and 
                       communications has revolutionized how we approach athlete development and public relations.
                     </AnimatedText>

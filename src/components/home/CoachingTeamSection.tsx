@@ -8,7 +8,7 @@ import { ExternalLinkIcon } from '@chakra-ui/icons';
 
 // Define our own simpler animation components (assuming it's available or defined elsewhere)
 // If AnimatedBox is defined in FinancialAdviceSection, we might need to extract it or redefine it
-const MotionBox = motion(Box);
+const MotionBox = motion.create(Box);
 
 interface AnimatedBoxProps {
   children: ReactNode;

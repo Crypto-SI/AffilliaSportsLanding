@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { motion } from 'motion/react';
 import { AnimatedSection } from '@/components/ui/AnimatedSection';
 import { AnimatedText } from '@/components/ui/AnimatedText';
+import { PlayerRegistrationForm } from '@/components/ui/PlayerRegistrationForm';
 
 export default function PlayerPortalSection() {
   const MotionBox = motion.create(Box);
@@ -116,18 +117,7 @@ export default function PlayerPortalSection() {
                 </MotionBox>
                 
                 <Box mt={10}>
-                  <MotionButton 
-                    size="lg" 
-                    bg="brand.500" 
-                    color="white" 
-                    _hover={{ bg: "brand.600" }}
-                    borderRadius="md"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.98 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    Register Interest
-                  </MotionButton>
+                  <PlayerRegistrationForm />
                 </Box>
               </Box>
             </SimpleGrid>

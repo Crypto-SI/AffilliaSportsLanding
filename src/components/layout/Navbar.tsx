@@ -32,6 +32,16 @@ export default function Navbar() {
     }
   };
 
+  const handleNavClick = (item: { name: string; id: string; href?: string }) => {
+    if (item.href) {
+      // Navigate to external page
+      window.location.href = item.href;
+    } else {
+      // Scroll to section on current page
+      scrollToSection(item.id);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: -20 }}
@@ -79,9 +89,9 @@ export default function Navbar() {
               <HStack spacing={20} fontFamily="heading" display={{ base: 'none', md: 'flex' }}>
                 {[
                   { name: 'About Us', id: 'about' },
-                  { name: 'Philosophy', id: 'philosophy' },
                   { name: 'Player Portal', id: 'player-portal' },
                   { name: 'Services', id: 'services' },
+                  { name: 'Player Applications', id: 'player-applications' },
                   { name: 'Financial Advisors', id: 'financial-advice' }
                 ].map((link, index) => (
                   <motion.div 
@@ -100,7 +110,7 @@ export default function Navbar() {
                       fontWeight="400" 
                       color={scrolled ? "neutral.900" : "white"}
                       cursor="pointer"
-                      onClick={() => scrollToSection(link.id)}
+                      onClick={() => handleNavClick(link)}
                       _hover={{ color: scrolled ? "neutral.800" : "whiteAlpha.800", textDecoration: "underline" }}
                       transition="color 0.2s ease"
                     >

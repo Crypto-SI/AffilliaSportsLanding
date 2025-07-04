@@ -7,7 +7,7 @@ import React, { ReactNode } from 'react';
 import { ExternalLinkIcon } from '@chakra-ui/icons';
 
 // Define our own simpler animation components to avoid linter errors
-const MotionBox = motion(Box);
+const MotionBox = motion.create(Box);
 
 interface AnimatedBoxProps {
   children: ReactNode;
