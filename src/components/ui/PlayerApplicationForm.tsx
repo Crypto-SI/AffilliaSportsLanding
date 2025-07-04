@@ -27,7 +27,7 @@ import {
   useToast,
 } from '@chakra-ui/react';
 import { FiUpload, FiFile, FiCheck, FiX } from 'react-icons/fi';
-import { supabase } from '../../lib/supabase';
+import { supabase, safeSupabaseOperation, isSupabaseConfigured, type PlayerApplication } from '@/lib/supabase';
 
 interface PlayerApplicationFormProps {
   isOpen: boolean;
@@ -45,7 +45,6 @@ interface FormData {
 
 interface UploadedFile {
   file: File;
-  path: string;
   name: string;
   size: number;
   type: string;
@@ -108,67 +107,40 @@ export default function PlayerApplicationForm({ isOpen, onClose }: PlayerApplica
 
     setError('');
     
-    // Generate unique file path
-    const timestamp = Date.now();
-    const extension = file.name.split('.').pop();
-    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const uniqueFileName = `${timestamp}_${sanitizedName}`;
-    
     setUploadedFile({
       file,
-      path: uniqueFileName,
       name: file.name,
       size: file.size,
       type: file.type
     });
   };
 
-  const uploadFile = async (file: File, path: string): Promise<void> => {
-    setUploadProgress(0);
-    
-    const { error } = await supabase.storage
-      .from('player-cvs')
-      .upload(path, file, {
-        cacheControl: '3600',
-        upsert: false,
-        contentType: file.type
-      });
-
-    if (error) {
-      throw new Error(`File upload failed: ${error.message}`);
-    }
-    
-    setUploadProgress(100);
-  };
-
-  const submitApplication = async (): Promise<void> => {
-    if (!uploadedFile) {
-      throw new Error('Please upload your CV first.');
-    }
-
-    // Upload file to storage
-    await uploadFile(uploadedFile.file, uploadedFile.path);
-    
-    // Save application to database
-    const applicationData = {
-      name: formData.name,
-      email: formData.email,
-      phone: formData.phone || null,
-      position: formData.position,
-      experience_level: formData.experienceLevel,
-      cv_file_path: uploadedFile.path,
-      cv_file_name: uploadedFile.name,
-      cv_file_size: uploadedFile.size,
-      cv_mime_type: uploadedFile.type,
-      application_notes: formData.applicationNotes || null,
-    };
-
-    const { error } = await supabase
-      .from('player_applications')
-      .insert([applicationData]);
-
-    if (error) {
-      throw new Error(`Application submission failed: ${error.message}`);
+  const uploadFile = async (file: File, applicationId: string): Promise<string | null> => {
+    try {
+      setUploadProgress(10);
+      
+      // Generate unique filename
+      const fileExtension = file.name.split('.').pop();
+      const fileName = `${applicationId}-${Date.now()}.${fileExtension}`;
+      const filePath = `applications/${fileName}`;
+      
+      setUploadProgress(30);
+      
+      // Upload file to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('player-cvs')
+        .upload(filePath, file);
+      
+      if (error) {
+        console.error('File upload error:', error);
+        return null;
+      }
+      
+      setUploadProgress(100);
+      return filePath;
+    } catch (error) {
+      console.error('File upload error:', error);
+      return null;
     }
   };
 
@@ -185,11 +157,68 @@ export default function PlayerApplicationForm({ isOpen, onClose }: PlayerApplica
       return;
     }
 
+    // Check if Supabase is configured
+    if (!isSupabaseConfigured) {
+      setError('Backend service is not configured. Please contact support.');
+      return;
+    }
+
     setIsLoading(true);
     setError('');
+    setUploadProgress(0);
     
     try {
-      await submitApplication();
+      // First, create the application record
+      const applicationData: Omit<PlayerApplication, 'id' | 'created_at' | 'updated_at'> = {
+        name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
+        phone: formData.phone.trim() || null,
+        position: formData.position,
+        experience_level: formData.experienceLevel,
+        application_notes: formData.applicationNotes.trim() || null,
+        cv_file_path: null, // Will update after file upload
+      };
+
+      const { data: application, error: dbError } = await safeSupabaseOperation(
+        async () => {
+          const result = await supabase
+            .from('player_applications')
+            .insert(applicationData)
+            .select()
+            .single();
+          return result;
+        },
+        15000 // 15 second timeout
+      );
+
+      if (dbError || !application || !application.id) {
+        throw new Error(dbError || 'Failed to create application record');
+      }
+
+      // Upload the CV file
+      const filePath = await uploadFile(uploadedFile.file, application.id);
+      
+      if (!filePath) {
+        throw new Error('Failed to upload CV file');
+      }
+
+      // Update the application record with the file path
+      const { error: updateError } = await safeSupabaseOperation(
+        async () => {
+          const result = await supabase
+            .from('player_applications')
+            .update({ cv_file_path: filePath })
+            .eq('id', application.id);
+          return result;
+        },
+        10000 // 10 second timeout
+      );
+
+      if (updateError) {
+        console.error('Failed to update file path:', updateError);
+        // Don't throw here as the main record was created successfully
+      }
+
       setSuccess(true);
       
       toast({
@@ -200,15 +229,16 @@ export default function PlayerApplicationForm({ isOpen, onClose }: PlayerApplica
         isClosable: true,
       });
       
-      // Reset form after successful submission
       setTimeout(() => {
         handleClose();
       }, 2000);
       
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred while submitting your application.');
+    } catch (error: any) {
+      console.error('Application submission error:', error);
+      setError(error.message || 'Failed to submit application. Please try again.');
     } finally {
       setIsLoading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -224,13 +254,14 @@ export default function PlayerApplicationForm({ isOpen, onClose }: PlayerApplica
     setUploadedFile(null);
     setError('');
     setSuccess(false);
+    setIsLoading(false);
     setUploadProgress(0);
     onClose();
   };
 
   const removeFile = () => {
     setUploadedFile(null);
-    setUploadProgress(0);
+    setError('');
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -242,30 +273,22 @@ export default function PlayerApplicationForm({ isOpen, onClose }: PlayerApplica
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} size="xl" closeOnOverlayClick={false}>
+    <Modal isOpen={isOpen} onClose={handleClose} size="xl">
       <ModalOverlay />
-      <ModalContent maxH="90vh" overflowY="auto">
-        <ModalHeader>
-          <Text fontSize="24px" fontWeight="bold" color="blue.600">
-            Player Application
-          </Text>
-          <Text fontSize="sm" color="gray.600" fontWeight="normal">
-            Submit your application to join Affillia Sports
-          </Text>
-        </ModalHeader>
+      <ModalContent>
+        <ModalHeader>Player Application Form</ModalHeader>
         <ModalCloseButton />
-        
         <ModalBody pb={6}>
           {success ? (
-            <Box textAlign="center" py={8}>
-              <Icon as={FiCheck} boxSize={16} color="green.500" mb={4} />
-              <Text fontSize="xl" fontWeight="bold" color="green.500" mb={2}>
-                Application Submitted Successfully!
-              </Text>
-              <Text color="gray.600">
-                We will review your application and contact you within 5-7 business days.
-              </Text>
-            </Box>
+            <Alert status="success" borderRadius="md">
+              <AlertIcon />
+              <Box>
+                <AlertTitle>Application Submitted Successfully!</AlertTitle>
+                <AlertDescription>
+                  Thank you for your application. Our team will review your CV and contact you within 48 hours.
+                </AlertDescription>
+              </Box>
+            </Alert>
           ) : (
             <form onSubmit={handleSubmit}>
               <VStack spacing={4}>
@@ -276,14 +299,23 @@ export default function PlayerApplicationForm({ isOpen, onClose }: PlayerApplica
                   </Alert>
                 )}
 
-                {/* Personal Information */}
+                {isLoading && uploadProgress > 0 && (
+                  <Box w="full">
+                    <Text fontSize="sm" mb={2}>
+                      Uploading CV: {uploadProgress}%
+                    </Text>
+                    <Progress value={uploadProgress} colorScheme="blue" />
+                  </Box>
+                )}
+
                 <FormControl isRequired>
                   <FormLabel>Full Name</FormLabel>
                   <Input
-                    placeholder="Enter your full name"
+                    type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    disabled={isLoading}
+                    placeholder="Enter your full name"
+                    isDisabled={isLoading}
                   />
                 </FormControl>
 
@@ -291,10 +323,10 @@ export default function PlayerApplicationForm({ isOpen, onClose }: PlayerApplica
                   <FormLabel>Email Address</FormLabel>
                   <Input
                     type="email"
-                    placeholder="Enter your email address"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    disabled={isLoading}
+                    placeholder="Enter your email address"
+                    isDisabled={isLoading}
                   />
                 </FormControl>
 
@@ -302,27 +334,25 @@ export default function PlayerApplicationForm({ isOpen, onClose }: PlayerApplica
                   <FormLabel>Phone Number</FormLabel>
                   <Input
                     type="tel"
-                    placeholder="Enter your phone number (optional)"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    disabled={isLoading}
+                    placeholder="Enter your phone number"
+                    isDisabled={isLoading}
                   />
                 </FormControl>
 
-                {/* Playing Information */}
                 <FormControl isRequired>
-                  <FormLabel>Preferred Position</FormLabel>
+                  <FormLabel>Position</FormLabel>
                   <Select
-                    placeholder="Select your position"
                     value={formData.position}
                     onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                    disabled={isLoading}
+                    placeholder="Select your position"
+                    isDisabled={isLoading}
                   >
                     <option value="goalkeeper">Goalkeeper</option>
                     <option value="defender">Defender</option>
                     <option value="midfielder">Midfielder</option>
                     <option value="forward">Forward</option>
-                    <option value="winger">Winger</option>
                     <option value="striker">Striker</option>
                   </Select>
                 </FormControl>
@@ -330,108 +360,107 @@ export default function PlayerApplicationForm({ isOpen, onClose }: PlayerApplica
                 <FormControl isRequired>
                   <FormLabel>Experience Level</FormLabel>
                   <Select
-                    placeholder="Select your experience level"
                     value={formData.experienceLevel}
                     onChange={(e) => setFormData({ ...formData, experienceLevel: e.target.value })}
-                    disabled={isLoading}
+                    placeholder="Select your experience level"
+                    isDisabled={isLoading}
                   >
-                    <option value="youth">Youth/Academy</option>
                     <option value="amateur">Amateur</option>
                     <option value="semi-professional">Semi-Professional</option>
                     <option value="professional">Professional</option>
-                    <option value="international">International</option>
+                    <option value="youth">Youth Player</option>
                   </Select>
                 </FormControl>
 
-                {/* CV Upload */}
-                <FormControl isRequired>
-                  <FormLabel>Upload Your CV</FormLabel>
-                  <Text fontSize="sm" color="gray.600" mb={2}>
-                    Accepted formats: PDF, DOC, DOCX, TXT (Max: 10MB)
-                  </Text>
-                  
-                  {!uploadedFile ? (
-                    <Box
-                      border="2px dashed"
-                      borderColor="gray.300"
-                      borderRadius="md"
-                      p={6}
-                      textAlign="center"
-                      _hover={{ borderColor: 'blue.400', bg: 'blue.50' }}
-                      cursor="pointer"
-                      position="relative"
-                    >
-                      <Input
-                        type="file"
-                        accept=".pdf,.doc,.docx,.txt"
-                        onChange={handleFileChange}
-                        position="absolute"
-                        top={0}
-                        left={0}
-                        width="100%"
-                        height="100%"
-                        opacity={0}
-                        cursor="pointer"
-                        disabled={isLoading}
-                      />
-                      <Icon as={FiUpload} boxSize={8} color="gray.400" mb={2} />
-                      <Text color="gray.600">
-                        Click to upload or drag and drop your CV
-                      </Text>
-                    </Box>
-                  ) : (
-                    <Box border="1px solid" borderColor="gray.200" borderRadius="md" p={4}>
-                      <HStack justify="space-between" align="center">
-                        <HStack>
-                          <Icon as={FiFile} color="blue.500" />
-                          <VStack align="start" spacing={0}>
-                            <Text fontSize="sm" fontWeight="medium">
-                              {uploadedFile.name}
-                            </Text>
-                            <Text fontSize="xs" color="gray.600">
-                              {formatFileSize(uploadedFile.size)}
-                            </Text>
-                          </VStack>
-                        </HStack>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          colorScheme="red"
-                          onClick={removeFile}
-                          disabled={isLoading}
-                        >
-                          <Icon as={FiX} />
-                        </Button>
-                      </HStack>
-                      
-                      {uploadProgress > 0 && (
-                        <Progress value={uploadProgress} colorScheme="blue" size="sm" mt={2} />
-                      )}
-                    </Box>
-                  )}
-                </FormControl>
-
-                {/* Additional Notes */}
                 <FormControl>
                   <FormLabel>Additional Notes</FormLabel>
                   <Textarea
-                    placeholder="Tell us about your achievements, goals, or any additional information..."
-                    rows={3}
                     value={formData.applicationNotes}
                     onChange={(e) => setFormData({ ...formData, applicationNotes: e.target.value })}
-                    disabled={isLoading}
+                    placeholder="Tell us about your career goals, achievements, or any other relevant information"
+                    rows={4}
+                    isDisabled={isLoading}
                   />
                 </FormControl>
 
-                {/* Submit Button */}
+                <FormControl isRequired>
+                  <FormLabel>Upload CV</FormLabel>
+                  <Box>
+                    {!uploadedFile ? (
+                      <Box
+                        border="2px dashed"
+                        borderColor="gray.300"
+                        borderRadius="md"
+                        p={8}
+                        textAlign="center"
+                        cursor={isLoading ? "not-allowed" : "pointer"}
+                        _hover={{ borderColor: isLoading ? "gray.300" : "blue.500" }}
+                        position="relative"
+                        opacity={isLoading ? 0.6 : 1}
+                      >
+                        <Input
+                          type="file"
+                          accept=".pdf,.doc,.docx,.txt"
+                          onChange={handleFileChange}
+                          position="absolute"
+                          top="0"
+                          left="0"
+                          width="100%"
+                          height="100%"
+                          opacity="0"
+                          cursor={isLoading ? "not-allowed" : "pointer"}
+                          disabled={isLoading}
+                        />
+                        <VStack spacing={2}>
+                          <Icon as={FiUpload} boxSize={8} color="gray.500" />
+                          <Text fontWeight="medium">Click to upload your CV</Text>
+                          <Text fontSize="sm" color="gray.500">
+                            PDF, DOC, DOCX, or TXT files only (max 10MB)
+                          </Text>
+                        </VStack>
+                      </Box>
+                    ) : (
+                      <Box
+                        border="1px solid"
+                        borderColor="green.300"
+                        borderRadius="md"
+                        p={4}
+                        bg="green.50"
+                      >
+                        <HStack justify="space-between">
+                          <HStack>
+                            <Icon as={FiFile} color="green.500" />
+                            <VStack align="start" spacing={0}>
+                              <Text fontSize="sm" fontWeight="medium">
+                                {uploadedFile.name}
+                              </Text>
+                              <Text fontSize="xs" color="gray.500">
+                                {formatFileSize(uploadedFile.size)}
+                              </Text>
+                            </VStack>
+                          </HStack>
+                          <Button
+                            size="sm"
+                            colorScheme="red"
+                            variant="ghost"
+                            onClick={removeFile}
+                            isDisabled={isLoading}
+                          >
+                            <Icon as={FiX} />
+                          </Button>
+                        </HStack>
+                      </Box>
+                    )}
+                  </Box>
+                </FormControl>
+
                 <Button
                   type="submit"
                   colorScheme="blue"
                   size="lg"
-                  width="100%"
+                  width="full"
                   isLoading={isLoading}
                   loadingText="Submitting Application..."
-                  disabled={!uploadedFile}
                 >
                   Submit Application
                 </Button>
