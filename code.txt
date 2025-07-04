@@ -1,0 +1,985 @@
+# AFFILLIA SPORTS LANDING SITE - COMPLETE CODEBASE
+
+## PROJECT OVERVIEW
+A Next.js 15.2.4 sports agency landing page with Chakra UI, Motion animations, and Supabase integration.
+- React 19.0.0
+- TypeScript
+- Chakra UI for styling
+- Motion for animations
+- Supabase for backend
+
+## CONFIGURATION FILES
+
+### package.json
+```json
+{
+  "name": "asl4",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@chakra-ui/icons": "^2.2.4",
+    "@chakra-ui/react": "^2.8.2",
+    "@emotion/react": "^11.11.3",
+    "@emotion/styled": "^11.11.0",
+    "@supabase/supabase-js": "^2.50.3",
+    "dotenv": "^17.0.1",
+    "motion": "^12.6.3",
+    "next": "15.2.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-icons": "^5.5.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.2.4",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
+```
+
+### next.config.js
+```js
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  /* config options here */
+  output: 'standalone',
+  experimental: {
+    optimizePackageImports: ["@chakra-ui/react"],
+  },
+  eslint: {
+    // Warning: This allows production builds to successfully complete even if
+    // your project has ESLint errors.
+    ignoreDuringBuilds: true,
+  },
+  images: {
+    domains: ['localhost'],
+  },
+  // The src/app directory is the default in Next.js 15+
+  // No need to set appDir: true, as that was for older versions
+};
+
+module.exports = nextConfig;
+```
+
+## APP DIRECTORY STRUCTURE
+
+### app/layout.tsx
+```tsx
+import type { Metadata } from "next";
+import { Inter, Alice } from "next/font/google";
+import "./globals.css";
+import { Provider } from "@/components/ui/provider";
+
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+});
+
+const alice = Alice({
+  variable: "--font-alice",
+  weight: ["400"],
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Affillia Sports | Elite Football Agency",
+  description: "Elite representation for elite performers in football",
+  icons: {
+    icon: [
+      { url: '/images/logos/favicon.svg', type: 'image/svg+xml' },
+      { url: '/images/logos/favicon.png', sizes: '32x32', type: 'image/png' },
+      { url: '/images/logos/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/images/logos/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="icon" href="/images/logos/favicon.svg" type="image/svg+xml" />
+      </head>
+      <body
+        className={`${inter.variable} ${alice.variable} antialiased`}
+      >
+        <Provider>{children}</Provider>
+      </body>
+    </html>
+  );
+}
+```
+
+### app/page.tsx - MAIN PAGE (PhilosophySection commented out due to bug)
+```tsx
+'use client';
+
+import Layout from '@/components/layout/Layout';
+import HeroSection from '@/components/home/HeroSection';
+import AboutSection from '@/components/home/AboutSection';
+// import PhilosophySection from '@/components/home/PhilosophySection';
+import PlayerPortalSection from '@/components/home/PlayerPortalSection';
+import ServicesSection from '@/components/home/ServicesSection';
+import FinancialAdviceSection from '@/components/home/FinancialAdviceSection';
+import CoachingTeamSection from '@/components/home/CoachingTeamSection';
+import PlayerApplicationSection from '@/components/home/PlayerApplicationSection';
+
+export default function Home() {
+  return (
+    <Layout>
+      <HeroSection />
+      <AboutSection />
+      {/* <PhilosophySection /> */}
+      <PlayerPortalSection />
+      <ServicesSection />
+      <FinancialAdviceSection />
+      <CoachingTeamSection />
+      <PlayerApplicationSection />
+    </Layout>
+  );
+}
+```
+
+### app/player-applications/page.tsx
+```tsx
+'use client';
+
+import { Box } from '@chakra-ui/react';
+import Layout from '@/components/layout/Layout';
+import PlayerApplicationSection from '@/components/home/PlayerApplicationSection';
+
+export default function PlayerApplicationsPage() {
+  return (
+    <Layout>
+      <Box pt={20}> {/* Add padding to account for fixed navbar */}
+        <PlayerApplicationSection />
+      </Box>
+    </Layout>
+  );
+}
+```
+
+## LAYOUT COMPONENTS
+
+### src/components/layout/Layout.tsx
+```tsx
+'use client';
+
+import { Box } from '@chakra-ui/react';
+import Navbar from './Navbar';
+import Footer from './Footer';
+
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return (
+    <Box>
+      <Navbar />
+      <Box as="main" pt={0}>
+        {children}
+      </Box>
+      <Footer />
+    </Box>
+  );
+}
+```
+
+### src/components/layout/Navbar.tsx
+```tsx
+'use client';
+
+import { Box, Flex, Text, Button, HStack, Image, Container, useColorModeValue } from '@chakra-ui/react';
+import Link from 'next/link';
+import { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
+
+export default function Navbar() {
+  const [scrolled, setScrolled] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    
+    const handleScroll = () => {
+      const isScrolled = window.scrollY > 10;
+      if (isScrolled !== scrolled) {
+        setScrolled(isScrolled);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [scrolled]);
+
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleNavClick = (item: { name: string; id: string; href?: string }) => {
+    if (item.href) {
+      // Navigate to external page
+      window.location.href = item.href;
+    } else {
+      // Scroll to section on current page
+      scrollToSection(item.id);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, delay: 0.2 }}
+    >
+      <Box 
+        as="nav" 
+        py={4} 
+        borderBottom={scrolled ? "1px solid" : "none"}
+        borderColor={scrolled ? "neutral.200" : "transparent"}
+        position="fixed"
+        top={0}
+        width="100%"
+        bg={scrolled ? "rgba(255, 255, 255, 0.5)" : "transparent"} 
+        backdropFilter={scrolled ? "blur(10px)" : "none"}
+        transition="all 0.3s ease"
+        zIndex={1000}
+        boxShadow={scrolled ? "0 2px 10px rgba(0, 0, 0, 0.05)" : "none"}
+      >
+        <Container maxW="1240px">
+          <Flex justify="space-between" align="center">
+            <Flex align="center">
+              <motion.div 
+                whileHover={{ scale: 1.05 }}
+                transition={{ type: "spring", stiffness: 400, damping: 10 }}
+              >
+                <Box 
+                  mr={10}
+                  cursor="pointer"
+                  onClick={() => window.location.href = window.location.pathname}
+                  position="relative"
+                  width={{ base: "160px", md: "240px" }}
+                  height={{ base: "40px", md: "55px" }}
+                  overflow="visible"
+                >
+                  <img 
+                    src={scrolled ? "/images/logos/affillia-logo-light.svg" : "/images/logos/affillia-logo-white.svg"}
+                    alt="Affillia Sports" 
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  />
+                </Box>
+              </motion.div>
+              
+              <HStack spacing={20} fontFamily="heading" display={{ base: 'none', md: 'flex' }}>
+                {[
+                  { name: 'About Us', id: 'about' },
+                  { name: 'Player Portal', id: 'player-portal' },
+                  { name: 'Services', id: 'services' },
+                  { name: 'Player Applications', id: 'player-applications' },
+                  { name: 'Financial Advisors', id: 'financial-advice' }
+                ].map((link, index) => (
+                  <motion.div 
+                    key={link.id}
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ 
+                      duration: 0.5, 
+                      delay: 0.3 + (index * 0.1),
+                      ease: [0.25, 0.1, 0.25, 1.0]
+                    }}
+                    whileHover={{ y: -3 }}
+                  >
+                    <Text 
+                      fontSize="lg" 
+                      fontWeight="400" 
+                      color={scrolled ? "neutral.900" : "white"}
+                      cursor="pointer"
+                      onClick={() => handleNavClick(link)}
+                      _hover={{ color: scrolled ? "neutral.800" : "whiteAlpha.800", textDecoration: "underline" }}
+                      transition="color 0.2s ease"
+                    >
+                      {link.name}
+                    </Text>
+                  </motion.div>
+                ))}
+              </HStack>
+            </Flex>
+          </Flex>
+        </Container>
+      </Box>
+    </motion.div>
+  );
+}
+```
+
+## HOME SECTION COMPONENTS
+
+### src/components/home/HeroSection.tsx
+```tsx
+'use client';
+
+import { Box, Heading, Text, Button, Flex, Container, Stack, VStack } from '@chakra-ui/react';
+import Image from 'next/image';
+import { motion } from 'motion/react';
+import { AnimatedText } from '../ui/AnimatedText';
+import { AnimatedImage } from '../ui/AnimatedImage';
+
+export default function HeroSection() {
+  return (
+    <Box
+      as="section"
+      pt={{ base: "80px", md: "100px" }}
+      pb={32}
+      position="relative"
+      overflow="hidden"
+      height={{ base: "calc(100vh - 0px)", md: "calc(100vh - 0px)" }}
+      minHeight="600px"
+    >
+      {/* Main Hero Background Image */}
+      <Box
+        position="absolute"
+        top="0"
+        left="0"
+        right="0"
+        bottom="0"
+        zIndex={0}
+        height="100%"
+      >
+        <motion.div
+          initial={{ scale: 1.1 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 1.5, ease: "easeOut" }}
+          style={{ height: "100%", width: "100%", position: "relative" }}
+        >
+          <Image
+            src="/images/optimized/hero/large/hero-main-banner.webp"
+            alt="Professional football stadium during a match"
+            fill
+            style={{ objectFit: 'cover' }}
+            quality={90}
+            priority
+            sizes="100vw"
+          />
+        </motion.div>
+      </Box>
+      
+      {/* Gradient overlay for better text readability */}
+      <Box
+        position="absolute"
+        top="0"
+        left="0"
+        right="0"
+        bottom="0"
+        bgGradient="linear(to-r, rgba(18, 30, 115, 0.85), rgba(18, 30, 115, 0.4))"
+        zIndex={1}
+      />
+      
+      {/* Decorative circle blur element */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 0.6 }}
+        transition={{ duration: 2, delay: 0.5 }}
+        style={{
+          position: "absolute",
+          top: "-10%",
+          right: "-5%",
+          width: "500px",
+          height: "500px",
+          borderRadius: "100%",
+          background: "var(--chakra-colors-brand-600)",
+          filter: "blur(164px)",
+          zIndex: 1
+        }}
+      />
+
+      {/* Player silhouette overlay */}
+      <Box
+        position="absolute"
+        right={{ base: "-50px", md: "0", lg: "100px" }}
+        bottom={{ base: "50px", md: "80px", lg: "100px" }}
+        height={{ base: "300px", md: "500px", lg: "600px" }}
+        width={{ base: "250px", md: "400px", lg: "500px" }}
+        zIndex={2}
+        display={{ base: 'none', md: 'block' }}
+        border="none"
+        outline="none"
+        boxShadow="none"
+      >
+        <motion.div
+          initial={{ opacity: 0, x: 50 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 1, delay: 0.7 }}
+          style={{ height: "100%", width: "100%", position: "relative" }}
+        >
+          <Image
+            src="/images/optimized/hero/large/baller.webp"
+            alt="Professional football player"
+            fill
+            style={{ 
+              objectFit: 'contain',
+              border: 'none', 
+              outline: 'none'
+            }}
+            quality={90}
+            priority
+            sizes="(max-width: 768px) 250px, (max-width: 1200px) 400px, 500px"
+          />
+        </motion.div>
+      </Box>
+
+      <Container maxW="1240px" position="relative" zIndex={3} h="100%" display="flex" alignItems="center">
+        <VStack 
+          spacing={8} 
+          align="flex-start" 
+          maxW="647px" 
+          mt={{ base: "120px", md: "140px" }}
+          pt={{ base: "40px", md: "0" }}
+        >
+          <AnimatedText
+            as="h1"
+            fontSize={{ base: "4xl", md: "6xl", lg: "7xl" }}
+            lineHeight="1.1"
+            letterSpacing="0.01em"
+            fontWeight="400"
+            fontFamily="var(--font-alice), serif !important"
+            color="white"
+            textTransform="uppercase"
+            delay={0.3}
+          >
+            Elite Representation for Elite Performers
+          </AnimatedText>
+          
+          <AnimatedText 
+            fontSize="lg" 
+            color="white" 
+            lineHeight="1.5"
+            delay={1.2}
+          >
+            Where exclusivity meets excellence. Personalized service for select athletes, 
+            empowering their journey on and off the pitch.
+          </AnimatedText>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ 
+              duration: 0.6, 
+              delay: 1.4,
+              ease: [0.25, 0.1, 0.25, 1.0]
+            }}
+          >
+            <Flex gap={5} mt={4}>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  bg="neutral.900"
+                  color="white"
+                  size="lg"
+                  px={10}
+                  py={6}
+                  height="auto"
+                  fontWeight="400"
+                  borderRadius="md"
+                  _hover={{ bg: 'neutral.800' }}
+                >
+                  Discover Affillia
+                </Button>
+              </motion.div>
+              
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  variant="outline"
+                  color="white"
+                  size="lg"
+                  px={10}
+                  py={6}
+                  height="auto"
+                  fontWeight="400"
+                  borderRadius="md"
+                  borderColor="white"
+                  _hover={{ bg: 'whiteAlpha.200' }}
+                >
+                  See Our Legacy
+                </Button>
+              </motion.div>
+            </Flex>
+          </motion.div>
+        </VStack>
+      </Container>
+    </Box>
+  );
+}
+```
+
+## PROBLEMATIC COMPONENT - PHILOSOPHY SECTION (CAUSES HANG)
+
+### src/components/home/PhilosophySection.tsx - ⚠️ THIS IS THE COMPONENT CAUSING THE BUG ⚠️
+```tsx
+'use client';
+
+import { Box, Heading, Text, Container, Flex, VStack } from '@chakra-ui/react';
+import { motion } from 'motion/react';
+import { AnimatedSection } from '@/components/ui/AnimatedSection';
+import { AnimatedText } from '@/components/ui/AnimatedText';
+
+export default function PhilosophySection() {
+  const MotionBox = motion.create(Box);
+  const MotionText = motion.create(Text);
+  
+  return (
+    <Box as="section" id="philosophy" py={20} bg="neutral.50">
+      <Container maxW="1240px">
+        <AnimatedSection>
+          <Heading
+            as="h2"
+            fontSize={{ base: "3xl", md: "4xl", lg: "5xl" }}
+            fontWeight="400"
+            mb={16}
+            color="neutral.900"
+            textAlign="center"
+          >
+            Our Philosophy
+          </Heading>
+        </AnimatedSection>
+        
+        <Flex
+          direction={{ base: "column", lg: "row" }}
+          gap={12}
+          align="stretch"
+        >
+          {/* Scrollable text box */}
+          <MotionBox 
+            flex="1" 
+            borderRadius="xl" 
+            bg="white"
+            p={8}
+            boxShadow="0px 4px 34px rgba(0, 0, 0, 0.1)"
+            borderWidth="1px"
+            borderColor="neutral.200"
+            initial={{ opacity: 0, x: -50 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.6, ease: [0.250, 0.460, 0.450, 0.940] }}
+          >
+            <Box 
+              height="400px" 
+              overflowY="auto"
+              pr={4}
+              css={{
+                '&::-webkit-scrollbar': {
+                  width: '8px',
+                },
+                '&::-webkit-scrollbar-track': {
+                  background: '#f1f1f1',
+                  borderRadius: '10px',
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  background: '#718096',
+                  borderRadius: '10px',
+                },
+                '&::-webkit-scrollbar-thumb:hover': {
+                  background: '#5a6986',
+                },
+              }}
+            >
+              <VStack spacing={6} align="start">
+                <MotionText 
+                  fontSize="lg" 
+                  color="neutral.700" 
+                  as="blockquote" 
+                  fontStyle="italic"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                >
+                  "The answer to the future is rather obvious. If the tapdancing becomes less constant, less furious, less necessary, what will the result be? The result will be more honesty, more focus, fewer clients, but eventually the revenues will be the same."
+                </MotionText>
+                
+                <AnimatedText delay={0.2}>
+                  <Text as="div" fontSize="md" color="neutral.600">
+                    At Affillia Sports, we believe in quality over quantity. Our philosophy centers on maintaining a smaller, more focused roster of elite athletes whom we can serve with unprecedented dedication and personalized attention.
+                  </Text>
+                </AnimatedText>
+                
+                <AnimatedText delay={0.3}>
+                  <Text as="div" fontSize="md" color="neutral.600">
+                    We've learned that success in sports representation isn't measured by the number of clients, but by the depth of relationships and the quality of service provided to each individual athlete.
+                  </Text>
+                </AnimatedText>
+                
+                <MotionText 
+                  fontSize="lg" 
+                  color="neutral.700" 
+                  as="blockquote" 
+                  fontStyle="italic"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.4 }}
+                >
+                  "And now we get to the answer that Dicky Fox knew years ago. The answer is fewer clients. Less dancing. More truth. We must crack open the tightly clenched fist of commerce and give a little back for the greater good."
+                </MotionText>
+                
+                <AnimatedText delay={0.5}>
+                  <Text as="div" fontSize="md" color="neutral.600">
+                    By focusing on a select group of athletes, we create space for genuine connection, allowing us to truly understand each client's unique needs, aspirations, and challenges. This intimate knowledge enables us to provide tailored guidance that goes beyond standard representation.
+                  </Text>
+                </AnimatedText>
+                
+                <MotionText 
+                  fontSize="lg" 
+                  color="neutral.700" 
+                  as="blockquote" 
+                  fontStyle="italic"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.6 }}
+                >
+                  "Learn who these people are. That is the stuff of your relationship. That is what will matter. People always respond best to personal attention, it is the simplest and easiest truth to forget."
+                </MotionText>
+                
+                <AnimatedText delay={0.7}>
+                  <Text as="div" fontSize="md" color="neutral.600">
+                    Our exclusive approach allows us to be fully present for our clients - available when they need us, responsive to their concerns, and proactive in identifying opportunities. We don't just manage careers; we nurture them with the care and attention they deserve.
+                  </Text>
+                </AnimatedText>
+                
+                <AnimatedText delay={0.8}>
+                  <Text as="div" fontSize="md" color="neutral.600">
+                    This philosophy is our manifesto for a more meaningful approach to sports representation - one that values relationships over volume and quality over quantity.
+                  </Text>
+                </AnimatedText>
+              </VStack>
+            </Box>
+          </MotionBox>
+          
+          {/* Visual section - replacing the download section */}
+          <MotionBox 
+            flex="1" 
+            borderRadius="xl" 
+            bg="brand.500"
+            p={8}
+            boxShadow="0px 4px 34px rgba(0, 0, 0, 0.1)"
+            color="white"
+            display="flex"
+            flexDirection="column"
+            justifyContent="center"
+            initial={{ opacity: 0, x: 50 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.6, ease: [0.250, 0.460, 0.450, 0.940] }}
+          >
+            <Box position="relative" mb={8}>
+              <MotionBox 
+                position="absolute"
+                top="-30px"
+                right="-30px"
+                width="150px"
+                height="150px"
+                borderRadius="full"
+                bg="brand.600"
+                filter="blur(40px)"
+                opacity="0.6"
+                zIndex={0}
+                animate={{ 
+                  scale: [1, 1.2, 1], 
+                  opacity: [0.6, 0.8, 0.6] 
+                }}
+                transition={{ 
+                  duration: 6, 
+                  repeat: Infinity,
+                  repeatType: "reverse" 
+                }}
+              />
+              <Heading
+                as="h3"
+                fontSize={{ base: "2xl", md: "3xl" }}
+                fontWeight="400"
+                mb={6}
+                position="relative"
+                zIndex={1}
+                textAlign="center"
+              >
+                Our Commitment
+              </Heading>
+              <AnimatedText delay={0.2}>
+                <Text as="div" fontSize="md" mb={8} position="relative" zIndex={1} textAlign="center">
+                  "The Things We Think and Do Not Say" is our guiding manifesto that explores our approach to sports representation and why we believe in focusing on fewer clients to deliver exceptional service.
+                </Text>
+              </AnimatedText>
+              <AnimatedText delay={0.4} staggerChildren={true}>
+                <Text as="div" fontSize="md" position="relative" zIndex={1} textAlign="center" fontStyle="italic" mb={6}>
+                  "Quality is not an act, it is a habit. We choose quality representation over quantity, creating deeper relationships and better outcomes for our select roster of athletes."
+                </Text>
+              </AnimatedText>
+              
+              {/* DOWNLOAD SECTION - THIS MIGHT BE CAUSING THE FILE READING ISSUE */}
+              <MotionBox 
+                textAlign="center"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: 0.5 }}
+              >
+                <Button
+                  as="a"
+                  href="/downloads/things.txt"  // THIS FILE ACCESS MIGHT BE THE PROBLEM
+                  download="The_Things_We_Think_and_Do_Not_Say.txt"
+                  bg="white"
+                  color="brand.500"
+                  size="lg"
+                  px={8}
+                  py={4}
+                  height="auto"
+                  fontWeight="500"
+                  borderRadius="md"
+                  _hover={{ bg: 'whiteAlpha.900', transform: 'translateY(-2px)' }}
+                  transition="all 0.3s ease"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  Download Our Manifesto
+                </Button>
+              </MotionBox>
+            </Box>
+          </MotionBox>
+        </Flex>
+      </Container>
+    </Box>
+  );
+}
+```
+
+## FOOTER COMPONENT (TRUNCATED - LARGE FILE)
+
+### src/components/layout/Footer.tsx (First 200 lines)
+```tsx
+'use client';
+
+import { Box, Container, Flex, Text, Heading, SimpleGrid, VStack, HStack, Divider, Link, Icon } from '@chakra-ui/react';
+import { FaFacebook, FaTwitter, FaInstagram, FaLinkedin } from 'react-icons/fa';
+import Image from 'next/image';
+import { motion, useInView } from 'motion/react';
+import { useRef } from 'react';
+
+export default function Footer() {
+  const footerRef = useRef(null);
+  const isInView = useInView(footerRef, { once: true, amount: 0.1 });
+  const MotionBox = motion.create(Box);
+  const MotionVStack = motion.create(VStack);
+  const MotionFlex = motion.create(Flex);
+  const MotionHStack = motion.create(HStack);
+  
+  const staggerContainerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.1
+      }
+    }
+  };
+  
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { 
+        duration: 0.6,
+        ease: [0.250, 0.460, 0.450, 0.940]
+      }
+    }
+  };
+  
+  const socialIconVariants = {
+    hidden: { scale: 0.8, opacity: 0 },
+    visible: { 
+      scale: 1, 
+      opacity: 1,
+      transition: { 
+        duration: 0.4,
+        ease: "easeOut"
+      }
+    },
+    hover: { 
+      scale: 1.15,
+      backgroundColor: "rgba(255, 255, 255, 0.2)",
+      transition: { 
+        duration: 0.2
+      }
+    }
+  };
+  
+  return (
+    <Box as="footer" color="white" py={12} position="relative" overflow="hidden" ref={footerRef}>
+      {/* Footer background texture */}
+      <Box
+        position="absolute"
+        top="0"
+        left="0"
+        right="0"
+        bottom="0"
+        zIndex={0}
+      >
+        <MotionBox
+          position="relative"
+          width="100%"
+          height="100%"
+          initial={{ scale: 1.1 }}
+          animate={isInView ? { scale: 1 } : {}}
+          transition={{ duration: 1.5, ease: "easeOut" }}
+        >
+          <Image
+            src="/images/optimized/footer/large/footer-texture.webp"
+            alt="Footer background texture"
+            fill
+            style={{ objectFit: 'cover' }}
+            quality={80}
+            sizes="100vw"
+          />
+        </MotionBox>
+        
+        {/* Dark overlay */}
+        <Box
+          position="absolute"
+          top="0"
+          left="0"
+          right="0"
+          bottom="0"
+          bg="rgba(20, 20, 30, 0.9)"
+        />
+      </Box>
+      
+      <Container maxW="1240px" position="relative" zIndex={1}>
+        {/* Main content sections with links, contact info, social media */}
+        {/* ... (rest of footer content) ... */}
+      </Container>
+    </Box>
+  );
+}
+```
+
+## UI COMPONENTS (REFERENCED BUT NOT FULLY SHOWN)
+
+- AnimatedText component - handles text animations
+- AnimatedImage component - handles image animations  
+- AnimatedSection component - handles section animations
+- PlayerApplicationForm - form for player applications
+- PlayerRegistrationForm - registration form
+- provider.tsx - Chakra UI provider setup
+
+## OTHER SECTIONS (WORKING)
+
+- AboutSection.tsx - Company information and mission
+- PlayerPortalSection.tsx - Player login/portal area
+- ServicesSection.tsx - Services offered
+- FinancialAdviceSection.tsx - Financial advisory services  
+- CoachingTeamSection.tsx - Team member profiles
+- PlayerApplicationSection.tsx - Application forms
+
+## DATABASE/BACKEND
+
+### src/lib/supabase.ts
+Supabase client configuration for backend functionality.
+
+### database/migrations/
+SQL migration files for database setup:
+- 001_create_affillia_mailing_list.sql
+- 002_fix_rls_policies.sql
+- 003_fix_anon_permissions.sql
+- 004_grant_anon_table_permissions.sql
+- 005_create_player_applications.sql
+
+## STYLING
+
+### app/globals.css
+Global CSS styles including Chakra UI overrides and custom styling.
+
+## IDENTIFIED ISSUES
+
+### CRITICAL BUG: PhilosophySection causes site hang
+- Location: src/components/home/PhilosophySection.tsx
+- Issue: Component contains a download link to "/downloads/things.txt" which may be causing synchronous file access
+- Status: Currently commented out in app/page.tsx
+- Impact: Site works perfectly without this component
+- Suspected cause: File reading operation blocking main thread
+
+### Configuration conflicts (RESOLVED)
+- Had duplicate next.config.js and next.config.ts (removed .ts version)
+- Had duplicate app directories: app/ and src/app/ (removed src/app/)
+
+## FILE STRUCTURE SUMMARY
+
+```
+AffilliaSportsLanding/
+├── app/                          # Main app directory
+│   ├── layout.tsx               # Root layout
+│   ├── page.tsx                 # Homepage (Philosophy commented out)
+│   ├── globals.css              # Global styles
+│   └── player-applications/
+│       └── page.tsx             # Player applications page
+├── src/
+│   ├── components/
+│   │   ├── layout/              # Layout components
+│   │   │   ├── Layout.tsx       # Main layout wrapper
+│   │   │   ├── Navbar.tsx       # Navigation (Philosophy link removed)
+│   │   │   └── Footer.tsx       # Site footer
+│   │   ├── home/                # Page section components
+│   │   │   ├── HeroSection.tsx  # Hero/banner section
+│   │   │   ├── AboutSection.tsx # About company section
+│   │   │   ├── PhilosophySection.tsx # ⚠️ PROBLEMATIC COMPONENT
+│   │   │   ├── PlayerPortalSection.tsx
+│   │   │   ├── ServicesSection.tsx
+│   │   │   ├── FinancialAdviceSection.tsx
+│   │   │   ├── CoachingTeamSection.tsx
+│   │   │   └── PlayerApplicationSection.tsx
+│   │   └── ui/                  # Reusable UI components
+│   │       ├── AnimatedText.tsx
+│   │       ├── AnimatedImage.tsx
+│   │       ├── AnimatedSection.tsx
+│   │       ├── PlayerApplicationForm.tsx
+│   │       ├── PlayerRegistrationForm.tsx
+│   │       └── provider.tsx
+│   └── lib/
+│       └── supabase.ts          # Supabase client
+├── database/
+│   └── migrations/              # Database migration files
+├── public/
+│   └── images/                  # Optimized images
+├── package.json                 # Dependencies
+├── next.config.js              # Next.js configuration
+└── tsconfig.json               # TypeScript configuration
+```
+
+## DEPLOYMENT NOTES
+
+- Uses Next.js 15.2.4 with React 19.0.0
+- Standalone output configuration for Docker deployment
+- Images optimized with WebP format
+- Motion library for animations
+- Chakra UI for component library
+- TypeScript for type safety
+- ESLint ignores builds (for deployment flexibility) 

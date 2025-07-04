@@ -1,0 +1,11 @@
+{
+  "composer.globalIgnore": [
+    "node_modules/**",
+    ".git/**",
+    "dist/**",
+    "build/**",
+    "*.log",
+    ".DS_Store",
+    "coverage/**"
+  ]
+} 
