@@ -1,7 +1,8 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  app:
+  affilliasports:
+    container_name: affilliasports
     build:
       context: .
       dockerfile: Dockerfile
@@ -9,8 +10,6 @@ services:
         - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
         - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
     restart: always
-    ports:
-      - "3000:3000"
     env_file:
       - .env.production
     environment:
@@ -28,3 +27,15 @@ services:
         reservations:
           cpus: '0.25'
           memory: 256M
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.affilliasports.rule=Host(`affilliasports.com`)"
+      - "traefik.http.routers.affilliasports.entrypoints=websecure"
+      - "traefik.http.routers.affilliasports.tls.certresolver=myresolver"
+      - "traefik.http.services.affilliasports.loadbalancer.server.port=3000"
+    networks:
+      - web
+
+networks:
+  web:
+    external: true
