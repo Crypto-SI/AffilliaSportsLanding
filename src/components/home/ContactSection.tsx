@@ -97,10 +97,10 @@ export default function ContactSection() {
       }
 
       // Use direct Supabase client call (same approach as registration form)
-      const { data, error } = await supabase
+      // Remove the .select() call which might not be supported in this version
+      const { error } = await supabase
         .from('contact_messages')
         .insert([contactData])
-        .select()
 
       if (error) {
         console.error('Supabase error details:', {

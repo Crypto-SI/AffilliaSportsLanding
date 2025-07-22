@@ -51,14 +51,60 @@ yarn build
 
 ## Docker Instructions
 
-<!-- 
-Docker deployment instructions will be added here. 
-This section will include:
-- Docker build commands
-- Docker compose setup
-- Environment configuration
-- Production deployment best practices
--->
+### Development with Docker
+
+1. Create a `.env.local` file with your environment variables (copy from `.env.example`)
+
+2. Build and start the development container:
+   ```bash
+   docker-compose -f docker-compose.dev.yml up --build
+   ```
+
+3. Access the development server at [http://localhost:3000](http://localhost:3000)
+
+### Production Deployment with Docker
+
+1. Create a `.env.production` file with your production environment variables (copy from `.env.production.example`)
+
+2. Use the deployment script:
+   ```bash
+   ./scripts/deploy.sh
+   ```
+   
+   Or manually build and run:
+   ```bash
+   # Build the production image
+   docker-compose -f docker-compose.prod.yml build
+   
+   # Start the container
+   docker-compose -f docker-compose.prod.yml up -d
+   ```
+
+3. Access your production application at [http://localhost:3000](http://localhost:3000)
+
+### Docker Configuration
+
+The project includes several Docker-related files:
+
+- `Dockerfile` - Production build configuration
+- `Dockerfile.dev` - Development configuration with hot-reloading
+- `docker-compose.yml` - Base Docker Compose configuration
+- `docker-compose.dev.yml` - Development-specific settings
+- `docker-compose.prod.yml` - Production-specific settings with resource limits
+
+### Environment Variables
+
+When running with Docker in production, environment variables are passed from your host machine's `.env.production` file to the container. Make sure this file contains the correct values for:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- Other required environment variables
+
+For local development, use `.env.local` which is not committed to git and overrides the default environment variables.
+
+**Note:** We use a single source of truth for environment variables in each environment:
+- Production: `.env.production`
+- Development: `.env.local` (for local overrides)
 
 ## Future Features Roadmap
 

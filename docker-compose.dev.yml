@@ -1,18 +1,19 @@
-version: '3'
+version: '3.8'
 
 services:
-  web:
+  app:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
     ports:
       - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
     environment:
       - NODE_ENV=development
-    # For development only - run as root user to avoid permission issues
-    user: "0:0"
-    volumes:
-      - ./src:/app/src
-      - ./public:/app/public
-      - ./next.config.js:/app/next.config.js
-      - ./tsconfig.json:/app/tsconfig.json 
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    command: npm run dev

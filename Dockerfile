@@ -1,54 +1,72 @@
-# syntax=docker/dockerfile:1
+# Use Node.js 20 Alpine as the base image for smaller size
+FROM node:20-alpine AS deps
 
-# Install dependencies only when needed
-FROM node:20-slim AS deps
-RUN apt-get update && apt-get install -y \
-    python3 \
-    make \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
+# Set working directory
 WORKDIR /app
+
+# Install dependencies for node-gyp (if needed)
+RUN apk add --no-cache libc6-compat python3 make g++
+
+# Copy package files
 COPY package.json package-lock.json ./
 
-# Build the Next.js application
-FROM node:20-slim AS builder
-RUN apt-get update && apt-get install -y \
-    python3 \
-    make \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
-WORKDIR /app
-COPY package.json package-lock.json ./
+# Install dependencies
 RUN npm ci
+
+# Build stage
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+# Accept build arguments for environment variables
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+# Set environment variables for build time
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# Set dummy environment variables for build
-ENV OPENAI_API_KEY=sk-dummy-build-key-for-docker
-ENV NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-anon-key
-ENV SUPABASE_SERVICE_ROLE_KEY=dummy-service-key
+
+# Create a .env.production file with the environment variables for build time
+RUN echo "NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}" > .env.production && \
+    echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}" >> .env.production && \
+    echo "OPENAI_API_KEY=sk-dummy-key-for-build-process-only" >> .env.production && \
+    echo "NODE_ENV=production" >> .env.production
+
+# Set OpenAI API key as environment variable for build
+ENV OPENAI_API_KEY=sk-dummy-key-for-build-process-only
+
+# Build the application
 RUN npm run build
 
-# Production image, copy only necessary files
-FROM node:20-slim AS runner
+# Production stage
+FROM node:20-alpine AS runner
 WORKDIR /app
-ENV NODE_ENV=production
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
 
-# Create a non-root user to run the app
-RUN addgroup --system --gid 1001 nodejs \
-    && adduser --system --uid 1001 nextjs
+# Set environment variables
+ENV NODE_ENV production
+ENV NEXT_TELEMETRY_DISABLED 1
 
-# Copy built output and static files
+# Create a non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copy necessary files from builder
 COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 
-# Optionally copy env file (uncomment if needed)
-# COPY .env.production .
-# COPY .env.local .
+# Set proper ownership
+RUN chown -R nextjs:nodejs /app
 
+# Switch to non-root user
 USER nextjs
+
+# Expose the port
 EXPOSE 3000
 
-CMD ["node", "server.js"] 
+# Set the command to run the app
+CMD ["node", "server.js"]

@@ -19,7 +19,7 @@ import {
   useDisclosure,
 } from '@chakra-ui/react';
 import { motion } from 'motion/react';
-import { supabase, type MailingListEntry } from '@/lib/supabase';
+import { supabase, type MailingListEntry, isSupabaseConfigured, safeSupabaseOperation } from '@/lib/supabase';
 
 const MotionButton = motion.create(Button);
 
@@ -100,33 +100,77 @@ export function PlayerRegistrationForm({ trigger }: PlayerRegistrationFormProps)
     setIsSubmitting(true);
 
     try {
-      const submissionData: Omit<MailingListEntry, 'id' | 'created_at'> = {
+      // Add more debugging to check Supabase client status
+      console.log('Supabase client check before submission:', {
+        isConfigured: isSupabaseConfigured,
+        clientExists: !!supabase,
+        fromMethod: typeof supabase.from === 'function',
+        insertMethod: typeof supabase.from?.('affillia_mailing_list')?.insert === 'function',
+      });
+
+      const submissionData = {
         name: formData.name.trim(),
         email: formData.email.trim().toLowerCase(),
         phone: formData.phone.trim() || null,
       };
 
-      const { data, error } = await supabase
-        .from('affillia_mailing_list')
-        .insert([submissionData])
-        .select();
+      console.log('Submitting data:', submissionData);
 
-      if (error) {
-        console.error('Supabase error details:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-          fullError: error
-        });
-        toast({
-          title: 'Registration failed',
-          description: `Error: ${error.message || 'Database connection failed'}`,
-          status: 'error',
-          duration: 8000,
-          isClosable: true,
-        });
-        return;
+      // Let's go back to using the Supabase client but with a simpler approach
+      try {
+        // First, let's check if we're using the mock client
+        if (!isSupabaseConfigured) {
+          console.warn('Using mock Supabase client - this will not work with the real database');
+        }
+        
+        // Try a very simple insert without chaining any methods
+        let insertError = null;
+        
+        try {
+          const insertResult = await supabase
+            .from('affillia_mailing_list')
+            .insert([submissionData]);
+            
+          insertError = insertResult.error;
+          console.log('Insert result:', insertResult);
+        } catch (e) {
+          console.error('Insert threw an exception:', e);
+          insertError = e;
+        }
+        
+        if (insertError) {
+          console.error('Insert error:', insertError);
+          
+          // Handle different types of error objects
+          let errorMessage = 'Database error occurred';
+          
+          if (typeof insertError === 'string') {
+            errorMessage = insertError;
+          } else if (insertError && typeof insertError === 'object') {
+            // Check if the error object has a message property
+            if (insertError.message) {
+              errorMessage = insertError.message;
+            } else if (Object.keys(insertError).length === 0) {
+              // Empty error object - likely a duplicate email
+              errorMessage = 'Email address may already be registered';
+            }
+          }
+          
+          toast({
+            title: 'Registration failed',
+            description: errorMessage,
+            status: 'error',
+            duration: 5000,
+            isClosable: true,
+          });
+          return; // Exit early
+        }
+        
+        // If we get here, the insert was successful
+        console.log('Insert successful!');
+      } catch (supabaseError) {
+        console.error('Supabase operation error:', supabaseError);
+        throw supabaseError;
       }
 
       toast({
