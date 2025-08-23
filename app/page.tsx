@@ -8,7 +8,7 @@ import ServicesSection from '@/components/home/ServicesSection';
 import FinancialAdviceSection from '@/components/home/FinancialAdviceSection';
 import CoachingTeamSection from '@/components/home/CoachingTeamSection';
 // import AIScoutSection from '@/components/home/AIScoutSection';
-import ContactSection from '@/components/home/ContactSection';
+// import ContactSection from '@/components/home/ContactSection';
 import PlayerApplicationSection from '@/components/home/PlayerApplicationSection';
 
 
@@ -23,7 +23,7 @@ export default function Home() {
       <CoachingTeamSection />
       {/* <AIScoutSection /> */}
       <PlayerApplicationSection />
-      <ContactSection />
+      {/* <ContactSection /> */}
     </Layout>
   );
 }

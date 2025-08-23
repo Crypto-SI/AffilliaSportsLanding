@@ -87,7 +87,7 @@ export const getAgeValidationError = (dateOfBirth: Date | string): string => {
   
   // Check for unrealistic dates (like February 30th) BEFORE other validations
   if (typeof dateOfBirth === 'string') {
-    const parts = dateString.split('-');
+    const parts = dateOfBirth.split('-');
     if (parts.length === 3) {
       const year = parseInt(parts[0]);
       const month = parseInt(parts[1]);
