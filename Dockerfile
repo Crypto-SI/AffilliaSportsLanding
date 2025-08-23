@@ -42,6 +42,9 @@ ENV OPENAI_API_KEY=sk-dummy-key-for-build-process-only
 # Build the application
 RUN npm run build
 
+# Fix any references to the old Supabase URL
+RUN node scripts/fix-supabase-url.js
+
 # Production stage
 FROM node:20-alpine AS runner
 WORKDIR /app

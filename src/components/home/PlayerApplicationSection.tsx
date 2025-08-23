@@ -1,221 +1,170 @@
 'use client';
 
-import React, { useState } from 'react';
-import {
-  Box,
-  Container,
-  Heading,
-  Text,
+import { 
+  Box, 
+  Container, 
+  Heading, 
+  Text, 
+  VStack, 
   Button,
-  VStack,
-  HStack,
-  SimpleGrid,
-  Icon,
-  useColorModeValue,
-  Badge,
-  UnorderedList,
-  ListItem,
+  Image,
+  Flex
 } from '@chakra-ui/react';
-import { motion } from 'motion/react';
-import { FiUpload, FiUser, FiMail, FiPhone, FiFileText, FiCheck, FiStar } from 'react-icons/fi';
-import PlayerApplicationForm from '@/components/ui/PlayerApplicationForm';
+import { useState, useEffect } from 'react';
+import { AnimatedSection } from '../ui/AnimatedSection';
+import { AnimatedText } from '../ui/AnimatedText';
+import PlayerApplicationForm from '../ui/PlayerApplicationForm';
 
-const MotionBox = motion.create(Box);
-const MotionContainer = motion.create(Container);
+
 
 export default function PlayerApplicationSection() {
-  const [isApplicationFormOpen, setIsApplicationFormOpen] = useState(false);
-  
-  const bgColor = useColorModeValue('gray.50', 'gray.900');
-  const cardBg = useColorModeValue('white', 'gray.800');
-  const primaryColor = useColorModeValue('blue.500', 'blue.400');
-  const textColor = useColorModeValue('gray.600', 'gray.300');
-  
-  const features = [
-    {
-      icon: FiUser,
-      title: 'Professional Profile',
-      description: 'Complete your player profile with position, experience level, and career goals'
-    },
-    {
-      icon: FiFileText,
-      title: 'CV Upload',
-      description: 'Upload your CV in PDF, DOC, DOCX, or TXT format (max 10MB)'
-    },
-    {
-      icon: FiMail,
-      title: 'Direct Contact',
-      description: 'Our scouts will contact you directly to discuss opportunities'
-    },
-    {
-      icon: FiStar,
-      title: 'Priority Review',
-      description: 'All applications reviewed within 48 hours by our professional team'
-    }
-  ];
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
-  const benefits = [
-    'Professional representation and contract negotiation',
-    'Career development and pathway planning',
-    'Media training and public relations support',
-    'Financial planning and investment guidance',
-    'Legal protection and compliance assistance',
-    'Network access to clubs and coaches worldwide'
-  ];
+  // Fix hydration issues
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
-  return (
-    <>
-      <Box bg={bgColor} py={20} id="player-applications">
-        <MotionContainer 
-          maxW="7xl"
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-        >
+  // Don't render until client-side to avoid hydration mismatches
+  if (!isClient) {
+    return (
+      <Box as="section" id="player-application" py={20} bg="neutral.50">
+        <Container maxW="1240px">
           <VStack spacing={12} align="center">
-            {/* Header Section */}
-            <VStack spacing={6} textAlign="center" maxW="4xl">
-              <Badge colorScheme="blue" px={4} py={2} borderRadius="full" fontSize="sm">
-                Player Applications
-              </Badge>
-              <Heading 
-                size="2xl" 
-                color={primaryColor}
-                lineHeight="shorter"
-                fontFamily="heading"
-              >
-                Ready to Take the Next Step?
+            <VStack spacing={4} textAlign="center">
+              <Heading size="xl" color="neutral.900">
+                Player Application
               </Heading>
-              <Text 
-                fontSize="xl" 
-                color={textColor}
-                lineHeight="tall"
-                maxW="3xl"
-              >
-                Join the next generation of professional athletes. Upload your CV and let our experienced team 
-                of agents and scouts help you navigate your career to the highest level.
+              <Text fontSize="lg" color="neutral.500" maxW="2xl">
+                Ready to take your football career to the next level? Apply to join our exclusive roster.
               </Text>
             </VStack>
+            <Box>Loading...</Box>
+          </VStack>
+        </Container>
+      </Box>
+    );
+  }
 
-            {/* Features Grid */}
-            <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={8} w="full">
-              {features.map((feature, index) => (
-                <MotionBox
-                  key={index}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.6, delay: index * 0.1 }}
+  return (
+    <Box as="section" id="player-application" py={20} bg="neutral.50" position="relative">
+      <Container maxW="1240px">
+        <Flex align="center" justify="space-between" position="relative">
+          {/* Left side image */}
+          <Box 
+            position="absolute" 
+            left={{ base: "-50px", md: "-100px", lg: "-150px" }} 
+            top="50%" 
+            transform="translateY(-50%)"
+            zIndex={1}
+            display={{ base: "none", lg: "block" }}
+          >
+            <Image
+              src="https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=300&h=400&fit=crop&crop=faces"
+              alt="Football player in action"
+              width="200px"
+              height="300px"
+              objectFit="cover"
+              borderRadius="xl"
+              boxShadow="lg"
+              opacity={0.8}
+            />
+          </Box>
+
+          {/* Right side image */}
+          <Box 
+            position="absolute" 
+            right={{ base: "-50px", md: "-100px", lg: "-150px" }} 
+            top="50%" 
+            transform="translateY(-50%)"
+            zIndex={1}
+            display={{ base: "none", lg: "block" }}
+          >
+            <Image
+              src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=300&h=400&fit=crop&crop=faces"
+              alt="Professional football player"
+              width="200px"
+              height="300px"
+              objectFit="cover"
+              borderRadius="xl"
+              boxShadow="lg"
+              opacity={0.8}
+            />
+          </Box>
+
+          {/* Main content */}
+          <Box flex={1} zIndex={2} position="relative">
+            <AnimatedSection>
+              <Box textAlign="center" mb={16}>
+                <AnimatedText
+                  as="h2"
+                  fontSize={{ base: "3xl", md: "4xl", lg: "5xl" }}
+                  fontWeight="400"
+                  fontFamily="var(--font-alice), serif !important"
+                  mb={6}
+                  color="neutral.900"
                 >
-                  <Box
-                    bg={cardBg}
-                    p={6}
-                    borderRadius="xl"
-                    boxShadow="lg"
-                    textAlign="center"
-                    h="full"
-                    border="1px"
-                    borderColor="gray.200"
-                    _hover={{
-                      transform: 'translateY(-4px)',
-                      boxShadow: 'xl',
-                    }}
-                    transition="all 0.3s ease"
-                  >
-                    <Icon as={feature.icon} boxSize={8} color={primaryColor} mb={4} />
-                    <Heading size="md" mb={3} color={primaryColor}>
-                      {feature.title}
-                    </Heading>
-                    <Text color={textColor} fontSize="sm">
-                      {feature.description}
-                    </Text>
-                  </Box>
-                </MotionBox>
-              ))}
-            </SimpleGrid>
+                  Player Application
+                </AnimatedText>
+                <AnimatedText 
+                  fontSize="lg" 
+                  maxW="800px" 
+                  mx="auto" 
+                  color="neutral.500"
+                  delay={0.2}
+                >
+                  Ready to take your football career to the next level? Apply to join our exclusive roster 
+                  of elite performers and experience personalized representation that goes beyond the game.
+                </AnimatedText>
+              </Box>
+            </AnimatedSection>
 
-            {/* Benefits Section */}
-            <MotionBox
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8 }}
-              w="full"
-            >
-              <Box bg={cardBg} p={8} borderRadius="xl" boxShadow="lg">
-                <VStack spacing={6}>
-                  <Heading size="lg" color={primaryColor} textAlign="center">
-                    What You Get as Our Client
-                  </Heading>
-                  <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} w="full">
-                    <UnorderedList spacing={2}>
-                      {benefits.slice(0, 3).map((benefit, index) => (
-                        <ListItem key={index} color={textColor}>
-                          <HStack>
-                            <Icon as={FiCheck} color="green.500" />
-                            <Text>{benefit}</Text>
-                          </HStack>
-                        </ListItem>
-                      ))}
-                    </UnorderedList>
-                    <UnorderedList spacing={2}>
-                      {benefits.slice(3).map((benefit, index) => (
-                        <ListItem key={index + 3} color={textColor}>
-                          <HStack>
-                            <Icon as={FiCheck} color="green.500" />
-                            <Text>{benefit}</Text>
-                          </HStack>
-                        </ListItem>
-                      ))}
-                    </UnorderedList>
-                  </SimpleGrid>
+            <AnimatedSection delay={0.3}>
+              <Box textAlign="center">
+                <Button
+                  onClick={() => setIsFormOpen(true)}
+                  bg="brand.500"
+                  color="white"
+                  size="xl"
+                  px={12}
+                  py={8}
+                  height="auto"
+                  fontWeight="400"
+                  borderRadius="md"
+                  fontSize="lg"
+                  _hover={{ 
+                    bg: 'brand.600', 
+                    transform: "translateY(-2px)", 
+                    boxShadow: "xl" 
+                  }}
+                  _active={{ transform: "translateY(0)" }}
+                  transition="all 0.2s"
+                >
+                  Apply Here
+                </Button>
+                
+                <VStack spacing={2} mt={6}>
+                  <Text fontSize="sm" color="neutral.600">
+                    <strong>Response Time:</strong> We typically respond within 48 hours
+                  </Text>
+                  <Text fontSize="sm" color="neutral.600">
+                    <strong>Privacy:</strong> Your information is kept confidential and secure
+                  </Text>
+                  <Text fontSize="sm" color="neutral.600">
+                    <strong>Next Steps:</strong> Successful applicants will be contacted for an initial consultation
+                  </Text>
                 </VStack>
               </Box>
-            </MotionBox>
 
-            {/* Call to Action */}
-            <MotionBox
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-            >
-              <VStack spacing={6} textAlign="center">
-                <Text fontSize="lg" color={textColor} maxW="2xl">
-                  Ready to start your professional journey? Submit your application today and let us help you reach the next level.
-                </Text>
-                <Button
-                  size="lg"
-                  colorScheme="blue"
-                  leftIcon={<FiUpload />}
-                  onClick={() => setIsApplicationFormOpen(true)}
-                  px={8}
-                  py={6}
-                  fontSize="lg"
-                  fontWeight="bold"
-                  _hover={{
-                    transform: 'translateY(-2px)',
-                    boxShadow: 'xl',
-                  }}
-                  transition="all 0.3s ease"
-                >
-                  Apply Now
-                </Button>
-                <Text fontSize="sm" color={textColor} fontStyle="italic">
-                  All applications are reviewed within 48 hours
-                </Text>
-              </VStack>
-            </MotionBox>
-          </VStack>
-        </MotionContainer>
-      </Box>
-
-      {/* Player Application Form Modal */}
-      <PlayerApplicationForm
-        isOpen={isApplicationFormOpen}
-        onClose={() => setIsApplicationFormOpen(false)}
-      />
-    </>
+              <PlayerApplicationForm 
+                isOpen={isFormOpen} 
+                onClose={() => setIsFormOpen(false)} 
+              />
+            </AnimatedSection>
+          </Box>
+        </Flex>
+      </Container>
+    </Box>
   );
-} 
+}

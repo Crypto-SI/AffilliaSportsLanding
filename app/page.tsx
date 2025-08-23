@@ -9,8 +9,8 @@ import FinancialAdviceSection from '@/components/home/FinancialAdviceSection';
 import CoachingTeamSection from '@/components/home/CoachingTeamSection';
 // import AIScoutSection from '@/components/home/AIScoutSection';
 import ContactSection from '@/components/home/ContactSection';
-// import SimplePlayerApplicationSection from '@/components/home/SimplePlayerApplicationSection';
-// import PlayerApplicationSection from '@/components/home/PlayerApplicationSection';
+import PlayerApplicationSection from '@/components/home/PlayerApplicationSection';
+
 
 export default function Home() {
   return (
@@ -22,9 +22,8 @@ export default function Home() {
       <FinancialAdviceSection />
       <CoachingTeamSection />
       {/* <AIScoutSection /> */}
+      <PlayerApplicationSection />
       <ContactSection />
-      {/* <SimplePlayerApplicationSection /> */}
-      {/* <PlayerApplicationSection /> */}
     </Layout>
   );
 }
