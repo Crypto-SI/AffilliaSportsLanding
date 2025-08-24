@@ -89,7 +89,7 @@ export default function AdminPlayerApplicationsPage() {
       }
 
       // Process applications to add age information
-      const processedApplications: PlayerApplicationWithAge[] = (data || []).map(app => {
+      const processedApplications: PlayerApplicationWithAge[] = (data || []).map((app: any) => {
         const ageCalc = calculatePlayerAge(app.date_of_birth)
         return {
           ...app,

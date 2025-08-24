@@ -45,11 +45,6 @@ import {
   validateParentGuardianPhone,
   requiresAdditionalVerification 
 } from '@/lib/youth-security';
-import { T } from 'vitest/dist/chunks/environment.d.cL3nLXbE.js';
-import { T } from 'vitest/dist/chunks/environment.d.cL3nLXbE.js';
-import { string } from 'zod';
-import { T } from 'vitest/dist/chunks/environment.d.cL3nLXbE.js';
-import { T } from 'vitest/dist/chunks/environment.d.cL3nLXbE.js';
 
 interface PlayerApplicationFormProps {
   isOpen: boolean;
@@ -290,10 +285,10 @@ export default function PlayerApplicationForm({ isOpen, onClose }: PlayerApplica
 
   const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-  const retryOperation = useCallback(async <T>(
-    operation: () => Promise<T>,
+  const retryOperation = useCallback(async (
+    operation: () => Promise<any>,
     context: string = 'Operation'
-  ): Promise<T> => {
+  ): Promise<any> => {
     let lastError: any;
     
     for (let attempt = 0; attempt <= retryConfig.maxRetries; attempt++) {
@@ -314,7 +309,7 @@ export default function PlayerApplicationForm({ isOpen, onClose }: PlayerApplica
         const result = await operation();
         setIsRetrying(false);
         return result;
-      } catch (error) {
+      } catch (error: any) {
         lastError = error;
         console.warn(`${context} attempt ${attempt + 1} failed:`, error);
         

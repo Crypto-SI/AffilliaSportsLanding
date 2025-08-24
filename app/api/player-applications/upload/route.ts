@@ -74,7 +74,10 @@ function generateSecureFileName(originalName: string, applicationId?: string): s
 export async function POST(request: NextRequest): Promise<NextResponse<FileUploadResponse>> {
   try {
     // Rate limiting
-    const ip = request.ip ?? request.headers.get('x-forwarded-for') ?? 'anonymous';
+    const ip = request.headers.get('x-forwarded-for') ?? 
+               request.headers.get('x-real-ip') ?? 
+               request.headers.get('cf-connecting-ip') ?? 
+               'anonymous';
     
     try {
       await uploadLimiter.check(5, ip); // 5 file uploads per minute per IP

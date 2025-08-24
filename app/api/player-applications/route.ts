@@ -43,14 +43,15 @@ interface PlayerApplicationResponse {
 
 export async function POST(request: NextRequest): Promise<NextResponse<PlayerApplicationResponse>> {
   const startTime = Date.now();
-  let requestId: string;
+  let requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   
   try {
-    // Generate unique request ID for tracking
-    requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     // Rate limiting with more specific error messages
-    const ip = request.ip ?? request.headers.get('x-forwarded-for') ?? 'anonymous';
+    const ip = request.headers.get('x-forwarded-for') ?? 
+               request.headers.get('x-real-ip') ?? 
+               request.headers.get('cf-connecting-ip') ?? 
+               'anonymous';
     
     try {
       await limiter.check(10, ip); // 10 requests per minute per IP
