@@ -1,19 +1,24 @@
-version: '3.8'
-
+cat > docker-compose.yml <<'YAML'
 services:
-  app:
+  affilliasports:
+    container_name: affilliasports
     build:
       context: .
       dockerfile: Dockerfile
-    restart: always
-    ports:
-      - "3000:3000"
+    restart: unless-stopped
     environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      NODE_ENV: production
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.affilliasports.rule=Host(`affilliasports.com`,`www.affilliasports.com`)"
+      - "traefik.http.routers.affilliasports.entrypoints=websecure"
+      - "traefik.http.routers.affilliasports.tls.certresolver=myresolver"
+      - "traefik.http.services.affilliasports.loadbalancer.server.port=3000"
+    networks:
+      - web
+networks:
+  web:
+    external: true
+YAML
