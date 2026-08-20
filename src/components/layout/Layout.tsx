@@ -3,6 +3,7 @@
 import { Box } from '@chakra-ui/react';
 import Navbar from './Navbar';
 import Footer from './Footer';
+import WhatsAppButton from './WhatsAppButton';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -12,6 +13,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {children}
       </Box>
       <Footer />
+      <WhatsAppButton />
     </Box>
   );
 } 
