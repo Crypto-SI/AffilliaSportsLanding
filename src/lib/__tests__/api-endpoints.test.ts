@@ -4,13 +4,14 @@ import { POST as playerApplicationsPost, GET as playerApplicationsGet } from '..
 import { POST as fileUploadPost } from '../../../app/api/player-applications/upload/route';
 
 // Mock Supabase
-vi.mock('@/lib/supabase', () => ({
-  supabase: {
+vi.mock('@/lib/supabase-admin', () => ({
+  supabaseAdmin: {
     from: vi.fn(() => ({
       select: vi.fn(() => ({
         eq: vi.fn(() => ({
           eq: vi.fn(() => ({
-            single: vi.fn(() => Promise.resolve({ data: null, error: { code: 'PGRST116' } }))
+            single: vi.fn(() => Promise.resolve({ data: null, error: { code: 'PGRST116' } })),
+            maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: { code: 'PGRST116' } }))
           }))
         }))
       })),
@@ -35,8 +36,7 @@ vi.mock('@/lib/supabase', () => ({
       }))
     }
   },
-  isSupabaseConfigured: true,
-  safeSupabaseOperation: vi.fn((operation) => operation())
+  isAdminConfigured: true
 }));
 
 // Mock rate limiter

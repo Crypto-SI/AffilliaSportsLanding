@@ -1,545 +1,194 @@
 'use client'
 
+import { useCallback, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
-  Box,
-  Container,
-  Heading,
-  Text,
-  VStack,
-  HStack,
-  Button,
-  Badge,
-  Card,
-  CardBody,
-  CardHeader,
-  Spinner,
-  Alert,
-  AlertIcon,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalCloseButton,
-  useDisclosure,
-  Select,
-  SimpleGrid,
-  Divider,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  TableContainer,
-  Link,
-  Icon
+  Box, Container, Heading, Text, VStack, HStack, Button, Badge, Table, Thead, Tbody, Tr, Th, Td,
+  TableContainer, Spinner, Alert, AlertIcon, Select, Modal, ModalOverlay, ModalContent, ModalHeader,
+  ModalBody, ModalCloseButton, useDisclosure, IconButton, Tooltip
 } from '@chakra-ui/react'
-import { useState, useEffect } from 'react'
-import { FiUser, FiMail, FiPhone, FiCalendar, FiTarget, FiStar, FiFileText, FiDownload, FiEye } from 'react-icons/fi'
-import { calculatePlayerAge } from '@/lib/player-utils'
+import { FiRefreshCw, FiLogOut, FiEye, FiDownload } from 'react-icons/fi'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
+import { useAdminSession } from '@/lib/admin-auth'
+import { calculatePlayerAge } from '@/lib/player-utils'
 import type { PlayerApplication } from '@/lib/types'
 
-interface PlayerApplicationWithAge extends PlayerApplication {
-  age: number
-  isYouth: boolean
-  contactType: string
+// Shape of a player_applications row as returned by Supabase
+interface AppRow {
+  id: string
+  name: string
+  email: string
+  phone?: string | null
+  date_of_birth: string
+  position?: string | null
+  experience_level?: string | null
+  application_notes?: string | null
+  cv_file_path?: string | null
+  cv_file_name?: string | null
+  status: string
+  created_at: string
+}
+
+type Row = AppRow & { age: number; isYouth: boolean }
+
+const STATUS_COLORS: Record<string, string> = {
+  pending: 'yellow', reviewing: 'blue', shortlisted: 'green',
+  rejected: 'red', contacted: 'purple',
 }
 
 export default function AdminPlayerApplicationsPage() {
-  const [applications, setApplications] = useState<PlayerApplicationWithAge[]>([])
-  const [selectedApplication, setSelectedApplication] = useState<PlayerApplicationWithAge | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [filter, setFilter] = useState<string>('all')
+  const router = useRouter()
+  const { session, loading: sessionLoading } = useAdminSession()
   const { isOpen, onOpen, onClose } = useDisclosure()
 
-  useEffect(() => {
-    fetchApplications()
-  }, [filter])
+  const [rows, setRows] = useState<Row[]>([])
+  const [selected, setSelected] = useState<Row | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [filter, setFilter] = useState('all')
 
-  const fetchApplications = async () => {
+  useEffect(() => {
+    if (!sessionLoading && !session) router.replace('/admin/login')
+  }, [sessionLoading, session, router])
+
+  const load = useCallback(async () => {
+    if (!session) return
     setLoading(true)
     setError(null)
-    
-    if (!isSupabaseConfigured) {
-      setError('Database not configured')
-      setLoading(false)
-      return
-    }
-    
-    try {
-      let query = supabase
-        .from('player_applications')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      // Apply filters
-      if (filter === 'youth') {
-        // We'll filter on the client side since we need to calculate age
-      } else if (filter === 'adult') {
-        // We'll filter on the client side since we need to calculate age
-      }
-
-      const { data, error: fetchError } = await query
-
-      if (fetchError) {
-        throw new Error(fetchError.message)
-      }
-
-      // Process applications to add age information
-      const processedApplications: PlayerApplicationWithAge[] = (data || []).map((app: any) => {
-        const ageCalc = calculatePlayerAge(app.date_of_birth)
-        return {
-          ...app,
-          age: ageCalc.age,
-          isYouth: ageCalc.isYouth,
-          contactType: ageCalc.isYouth ? 'Parent/Guardian' : 'Player'
-        }
+    const { data, error: err } = await supabase
+      .from('player_applications')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (err) setError(err.message)
+    else {
+      const enriched: Row[] = (data || []).map((a: PlayerApplication) => {
+        const c = calculatePlayerAge(a.date_of_birth)
+        return { ...a, age: c.age, isYouth: c.isYouth }
       })
-
-      // Apply client-side filtering
-      let filteredApplications = processedApplications
-      if (filter === 'youth') {
-        filteredApplications = processedApplications.filter(app => app.isYouth)
-      } else if (filter === 'adult') {
-        filteredApplications = processedApplications.filter(app => !app.isYouth)
-      }
-
-      setApplications(filteredApplications)
-    } catch (err) {
-      console.error('Failed to fetch applications:', err)
-      setError(err instanceof Error ? err.message : 'Failed to fetch applications')
-    } finally {
-      setLoading(false)
+      setRows(enriched)
     }
-  }
+    setLoading(false)
+  }, [session])
 
-  const viewApplication = (application: PlayerApplicationWithAge) => {
-    setSelectedApplication(application)
-    onOpen()
-  }
+  useEffect(() => { if (session) load() }, [session, load])
 
-  const getAgeColor = (age: number, isYouth: boolean) => {
-    if (isYouth) return 'orange'
-    if (age >= 30) return 'blue'
-    if (age >= 25) return 'green'
-    return 'purple'
-  }
-
-  const getExperienceColor = (level: string) => {
-    switch (level.toLowerCase()) {
-      case 'professional': return 'green'
-      case 'semi-professional': return 'blue'
-      case 'amateur': return 'gray'
-      case 'youth': return 'orange'
-      default: return 'gray'
-    }
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
-  }
-
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
-  if (loading && applications.length === 0) {
+  if (sessionLoading || !session) {
     return (
-      <Container maxW="8xl" py={8}>
-        <VStack spacing={8}>
-          <Heading>Player Applications Admin</Heading>
-          <Spinner size="xl" />
-          <Text>Loading applications...</Text>
-        </VStack>
+      <Container maxW="container.xl" py={20} centerContent>
+        <Spinner size="xl" />
       </Container>
     )
   }
 
+  const visible = rows.filter(r =>
+    filter === 'all' ? true : filter === 'youth' ? r.isYouth : filter === 'adult' ? !r.isYouth : r.status === filter
+  )
+
+  const updateStatus = async (id: string, status: string) => {
+    const { error: err } = await supabase.from('player_applications').update({ status }).eq('id', id)
+    if (err) setError(err.message)
+    else setRows(prev => prev.map(r => (r.id === id ? { ...r, status } : r)))
+  }
+
+  const exportCsv = () => {
+    const head = ['Name', 'Email', 'Phone', 'DOB', 'Age', 'Position', 'Experience', 'Status', 'Submitted']
+    const lines = visible.map(r =>
+      [r.name, r.email, r.phone ?? '', r.date_of_birth, r.age, r.position ?? '', r.experience_level ?? '', r.status, r.created_at]
+        .map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')
+    )
+    const blob = new Blob([[head.join(','), ...lines].join('\n')], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `affillia-applications-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const signOut = async () => { await supabase.auth.signOut(); router.replace('/admin/login') }
+
   return (
-    <Container maxW="8xl" py={8}>
-      <VStack spacing={8} align="stretch">
-        <Box>
-          <Heading mb={4}>Player Applications Admin</Heading>
-          <Text color="gray.600">
-            View and manage player registration applications with age-based categorization
-          </Text>
-        </Box>
-
-        {error && (
-          <Alert status="error">
-            <AlertIcon />
-            {error}
-          </Alert>
-        )}
-
-        {/* Filters */}
-        <HStack spacing={4} wrap="wrap">
-          <Text fontWeight="semibold">Filter by age group:</Text>
-          <Select value={filter} onChange={(e) => setFilter(e.target.value)} maxW="200px">
-            <option value="all">All Applications</option>
-            <option value="youth">Youth Players (Under 18)</option>
-            <option value="adult">Adult Players (18+)</option>
-          </Select>
-          <Button onClick={fetchApplications} colorScheme="blue" size="sm">
-            Refresh
-          </Button>
+    <Container maxW="container.xl" py={{ base: 8, md: 12 }}>
+      <VStack spacing={6} align="stretch">
+        <HStack justify="space-between" wrap="wrap" gap={4}>
+          <Box>
+            <Heading size="lg">Player Applications</Heading>
+            <Text color="gray.500" fontSize="sm" mt={1}>
+              {rows.length} total · {rows.filter(r => r.isYouth).length} youth
+            </Text>
+          </Box>
+          <HStack spacing={2}>
+            <Tooltip label="Refresh"><IconButton aria-label="Refresh" icon={<FiRefreshCw />} onClick={load} isLoading={loading} /></Tooltip>
+            <Tooltip label="Export CSV"><IconButton aria-label="Export CSV" icon={<FiDownload />} onClick={exportCsv} isDisabled={!visible.length} /></Tooltip>
+            <Button leftIcon={<FiLogOut />} variant="outline" onClick={signOut}>Sign out</Button>
+          </HStack>
         </HStack>
 
-        {/* Statistics */}
-        <SimpleGrid columns={{ base: 1, md: 5 }} spacing={6}>
-          <Card>
-            <CardBody textAlign="center">
-              <Text fontSize="2xl" fontWeight="bold" color="blue.600">
-                {applications.length}
-              </Text>
-              <Text fontSize="sm" color="gray.600">Total Applications</Text>
-            </CardBody>
-          </Card>
-          <Card>
-            <CardBody textAlign="center">
-              <Text fontSize="2xl" fontWeight="bold" color="orange.600">
-                {applications.filter(app => app.isYouth).length}
-              </Text>
-              <Text fontSize="sm" color="gray.600">Youth Players</Text>
-            </CardBody>
-          </Card>
-          <Card>
-            <CardBody textAlign="center">
-              <Text fontSize="2xl" fontWeight="bold" color="green.600">
-                {applications.filter(app => !app.isYouth).length}
-              </Text>
-              <Text fontSize="sm" color="gray.600">Adult Players</Text>
-            </CardBody>
-          </Card>
-          <Card>
-            <CardBody textAlign="center">
-              <Text fontSize="2xl" fontWeight="bold" color="purple.600">
-                {applications.filter(app => app.experience_level === 'professional').length}
-              </Text>
-              <Text fontSize="sm" color="gray.600">Professional</Text>
-            </CardBody>
-          </Card>
-          <Card>
-            <CardBody textAlign="center">
-              <Text fontSize="2xl" fontWeight="bold" color="teal.600">
-                {applications.filter(app => app.cv_file_path).length}
-              </Text>
-              <Text fontSize="sm" color="gray.600">With CV</Text>
-            </CardBody>
-          </Card>
-        </SimpleGrid>
+        {error && <Alert status="error"><AlertIcon />{error}</Alert>}
 
-        {/* Applications Table */}
-        <Card>
-          <CardHeader>
-            <Heading size="md">Applications ({applications.length})</Heading>
-          </CardHeader>
-          <CardBody>
-            <TableContainer>
-              <Table variant="simple" size="sm">
-                <Thead>
-                  <Tr>
-                    <Th>Player Name</Th>
-                    <Th>Age</Th>
-                    <Th>Contact Info</Th>
-                    <Th>Position</Th>
-                    <Th>Experience</Th>
-                    <Th>CV</Th>
-                    <Th>Submitted</Th>
-                    <Th>Actions</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {applications.map((app) => (
-                    <Tr key={app.id}>
-                      <Td>
-                        <VStack align="start" spacing={1}>
-                          <Text fontWeight="medium">{app.name}</Text>
-                          {app.isYouth && (
-                            <Badge colorScheme="orange" size="sm">
-                              Youth Player
-                            </Badge>
-                          )}
-                        </VStack>
-                      </Td>
-                      <Td>
-                        <Badge colorScheme={getAgeColor(app.age, app.isYouth)}>
-                          {app.age} years
-                        </Badge>
-                      </Td>
-                      <Td>
-                        <VStack align="start" spacing={1} fontSize="sm">
-                          <HStack>
-                            <Icon as={FiMail} />
-                            <Text>{app.email}</Text>
-                          </HStack>
-                          {app.phone && (
-                            <HStack>
-                              <Icon as={FiPhone} />
-                              <Text>{app.phone}</Text>
-                            </HStack>
-                          )}
-                          <Text fontSize="xs" color="gray.500">
-                            ({app.contactType})
-                          </Text>
-                        </VStack>
-                      </Td>
-                      <Td>
-                        <Badge variant="outline">
-                          {app.position}
-                        </Badge>
-                      </Td>
-                      <Td>
-                        <Badge colorScheme={getExperienceColor(app.experience_level)}>
-                          {app.experience_level}
-                        </Badge>
-                      </Td>
-                      <Td>
-                        {app.cv_file_path ? (
-                          <Badge colorScheme="green">
-                            <Icon as={FiFileText} mr={1} />
-                            Available
-                          </Badge>
-                        ) : (
-                          <Badge colorScheme="gray">
-                            None
-                          </Badge>
-                        )}
-                      </Td>
-                      <Td>
-                        <Text fontSize="sm">
-                          {formatDate(app.created_at!)}
-                        </Text>
-                      </Td>
-                      <Td>
-                        <Button
-                          size="sm"
-                          colorScheme="blue"
-                          variant="outline"
-                          leftIcon={<FiEye />}
-                          onClick={() => viewApplication(app)}
-                        >
-                          View
-                        </Button>
-                      </Td>
-                    </Tr>
-                  ))}
-                </Tbody>
-              </Table>
-            </TableContainer>
+        <HStack>
+          <Select maxW="240px" value={filter} onChange={e => setFilter(e.target.value)}>
+            <option value="all">All applications</option>
+            <option value="youth">Youth players</option>
+            <option value="adult">Adult players</option>
+            <option value="pending">Pending</option>
+            <option value="reviewing">Reviewing</option>
+            <option value="shortlisted">Shortlisted</option>
+            <option value="contacted">Contacted</option>
+            <option value="rejected">Rejected</option>
+          </Select>
+        </HStack>
 
-            {applications.length === 0 && !loading && (
-              <Box textAlign="center" py={12}>
-                <Text fontSize="lg" color="gray.500">
-                  No applications found for the selected filter.
-                </Text>
-              </Box>
-            )}
-          </CardBody>
-        </Card>
+        <TableContainer borderWidth={1} borderRadius="lg">
+          <Table size="sm">
+            <Thead>
+              <Tr>
+                <Th>Name</Th><Th>Age</Th><Th>Contact</Th><Th>Position</Th><Th>Status</Th><Th>Submitted</Th><Th />
+              </Tr>
+            </Thead>
+            <Tbody>
+              {visible.map(r => (
+                <Tr key={r.id} _hover={{ bg: 'gray.50', cursor: 'pointer' }} onClick={() => { setSelected(r); onOpen() }}>
+                  <Td fontWeight="medium">{r.name}{r.isYouth && <Badge ml={2} colorScheme="orange" fontSize="xs">Youth</Badge>}</Td>
+                  <Td>{r.age}</Td>
+                  <Td fontSize="sm">{r.email}{r.phone ? <><br />{r.phone}</> : null}</Td>
+                  <Td>{r.position}</Td>
+                  <Td onClick={e => e.stopPropagation()}>
+                    <Select size="xs" value={r.status} onChange={e => updateStatus(r.id, e.target.value)} maxW="130px">
+                      {Object.keys(STATUS_COLORS).map(s => <option key={s} value={s}>{s}</option>)}
+                    </Select>
+                  </Td>
+                  <Td fontSize="sm" color="gray.500">{new Date(r.created_at).toLocaleDateString()}</Td>
+                  <Td onClick={e => e.stopPropagation()}>
+                    <IconButton aria-label="View" size="sm" variant="ghost" icon={<FiEye />} onClick={() => { setSelected(r); onOpen() }} />
+                  </Td>
+                </Tr>
+              ))}
+              {!visible.length && (
+                <Tr><Td colSpan={7} textAlign="center" py={10} color="gray.400">
+                  {loading ? <Spinner /> : 'No applications yet'}
+                </Td></Tr>
+              )}
+            </Tbody>
+          </Table>
+        </TableContainer>
       </VStack>
 
-      {/* Application Detail Modal */}
-      <Modal isOpen={isOpen} onClose={onClose} size="4xl">
+      <Modal isOpen={isOpen} onClose={onClose} size="lg">
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>
-            Application Details - {selectedApplication?.name}
-          </ModalHeader>
+          <ModalHeader>{selected?.name}</ModalHeader>
           <ModalCloseButton />
           <ModalBody pb={6}>
-            {selectedApplication && (
-              <VStack spacing={6} align="stretch">
-                {/* Application Status */}
-                <HStack justify="space-between" wrap="wrap">
-                  <VStack align="start" spacing={2}>
-                    <Heading size="md">{selectedApplication.name}</Heading>
-                    <HStack spacing={2}>
-                      <Badge colorScheme={getAgeColor(selectedApplication.age, selectedApplication.isYouth)} size="lg">
-                        {selectedApplication.age} years old
-                      </Badge>
-                      {selectedApplication.isYouth && (
-                        <Badge colorScheme="orange" size="lg">
-                          Youth Player
-                        </Badge>
-                      )}
-                      <Badge colorScheme={getExperienceColor(selectedApplication.experience_level)} size="lg">
-                        {selectedApplication.experience_level}
-                      </Badge>
-                    </HStack>
-                  </VStack>
-                  <VStack align="end" spacing={1}>
-                    <Text fontSize="sm" color="gray.600">
-                      Submitted: {formatDateTime(selectedApplication.created_at!)}
-                    </Text>
-                    <Text fontSize="sm" color="gray.600">
-                      ID: {selectedApplication.id}
-                    </Text>
-                  </VStack>
-                </HStack>
-
-                <Divider />
-
-                {/* Player Information */}
-                <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-                  <Card>
-                    <CardHeader>
-                      <Heading size="sm">
-                        <Icon as={FiUser} mr={2} />
-                        Player Information
-                      </Heading>
-                    </CardHeader>
-                    <CardBody>
-                      <VStack align="start" spacing={3}>
-                        <HStack>
-                          <Text fontWeight="medium" minW="120px">Full Name:</Text>
-                          <Text>{selectedApplication.name}</Text>
-                        </HStack>
-                        <HStack>
-                          <Text fontWeight="medium" minW="120px">Date of Birth:</Text>
-                          <Text>{formatDate(selectedApplication.date_of_birth)}</Text>
-                        </HStack>
-                        <HStack>
-                          <Text fontWeight="medium" minW="120px">Age:</Text>
-                          <Text>{selectedApplication.age} years old</Text>
-                        </HStack>
-                        <HStack>
-                          <Text fontWeight="medium" minW="120px">Position:</Text>
-                          <Badge variant="outline">{selectedApplication.position}</Badge>
-                        </HStack>
-                        <HStack>
-                          <Text fontWeight="medium" minW="120px">Experience:</Text>
-                          <Badge colorScheme={getExperienceColor(selectedApplication.experience_level)}>
-                            {selectedApplication.experience_level}
-                          </Badge>
-                        </HStack>
-                      </VStack>
-                    </CardBody>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <Heading size="sm">
-                        <Icon as={FiMail} mr={2} />
-                        Contact Information
-                      </Heading>
-                    </CardHeader>
-                    <CardBody>
-                      <VStack align="start" spacing={3}>
-                        <VStack align="start" spacing={1}>
-                          <Text fontWeight="medium">Contact Type:</Text>
-                          <Badge colorScheme={selectedApplication.isYouth ? "orange" : "blue"}>
-                            {selectedApplication.contactType}
-                          </Badge>
-                        </VStack>
-                        <HStack>
-                          <Text fontWeight="medium" minW="80px">Email:</Text>
-                          <Link href={`mailto:${selectedApplication.email}`} color="blue.500">
-                            {selectedApplication.email}
-                          </Link>
-                        </HStack>
-                        {selectedApplication.phone && (
-                          <HStack>
-                            <Text fontWeight="medium" minW="80px">Phone:</Text>
-                            <Link href={`tel:${selectedApplication.phone}`} color="blue.500">
-                              {selectedApplication.phone}
-                            </Link>
-                          </HStack>
-                        )}
-                        {selectedApplication.isYouth && (
-                          <Alert status="info" size="sm">
-                            <AlertIcon />
-                            <Text fontSize="sm">
-                              Contact information belongs to parent/guardian for this youth player
-                            </Text>
-                          </Alert>
-                        )}
-                      </VStack>
-                    </CardBody>
-                  </Card>
-                </SimpleGrid>
-
-                {/* Application Notes */}
-                {selectedApplication.application_notes && (
-                  <Card>
-                    <CardHeader>
-                      <Heading size="sm">
-                        <Icon as={FiFileText} mr={2} />
-                        Application Notes
-                      </Heading>
-                    </CardHeader>
-                    <CardBody>
-                      <Text whiteSpace="pre-wrap" fontSize="sm">
-                        {selectedApplication.application_notes}
-                      </Text>
-                    </CardBody>
-                  </Card>
-                )}
-
-                {/* CV Information */}
-                <Card>
-                  <CardHeader>
-                    <Heading size="sm">
-                      <Icon as={FiFileText} mr={2} />
-                      CV/Resume
-                    </Heading>
-                  </CardHeader>
-                  <CardBody>
-                    {selectedApplication.cv_file_path ? (
-                      <HStack justify="space-between">
-                        <VStack align="start" spacing={1}>
-                          <Text fontWeight="medium">CV Available</Text>
-                          <Text fontSize="sm" color="gray.600">
-                            File: {selectedApplication.cv_file_path}
-                          </Text>
-                        </VStack>
-                        <Button
-                          leftIcon={<FiDownload />}
-                          colorScheme="blue"
-                          size="sm"
-                          onClick={() => {
-                            // TODO: Implement CV download functionality
-                            alert('CV download functionality would be implemented here')
-                          }}
-                        >
-                          Download CV
-                        </Button>
-                      </HStack>
-                    ) : (
-                      <Text color="gray.500" fontSize="sm">
-                        No CV uploaded with this application
-                      </Text>
-                    )}
-                  </CardBody>
-                </Card>
-
-                {/* Youth Player Special Notice */}
-                {selectedApplication.isYouth && (
-                  <Alert status="warning">
-                    <AlertIcon />
-                    <Box>
-                      <Text fontWeight="medium">Youth Player Application</Text>
-                      <Text fontSize="sm">
-                        This application is for a player under 18 years old. Enhanced privacy protection 
-                        and parental consent requirements apply. All communications must be directed to 
-                        the parent/guardian contact information provided.
-                      </Text>
-                    </Box>
-                  </Alert>
-                )}
+            {selected && (
+              <VStack spacing={3} align="stretch" fontSize="sm">
+                <HStack justify="space-between"><Text color="gray.500">Status</Text><Badge colorScheme={STATUS_COLORS[selected.status] || 'gray'}>{selected.status}</Badge></HStack>
+                <HStack justify="space-between"><Text color="gray.500">Age</Text><Text>{selected.age} (DOB {selected.date_of_birth})</Text></HStack>
+                <HStack justify="space-between"><Text color="gray.500">Contact ({selected.isYouth ? 'parent/guardian' : 'player'})</Text><Text>{selected.email}{selected.phone ? ` · ${selected.phone}` : ''}</Text></HStack>
+                <HStack justify="space-between"><Text color="gray.500">Position</Text><Text>{selected.position}</Text></HStack>
+                <HStack justify="space-between"><Text color="gray.500">Experience</Text><Text>{selected.experience_level}</Text></HStack>
+                {selected.cv_file_path && <HStack justify="space-between"><Text color="gray.500">CV</Text><Text>{selected.cv_file_name || selected.cv_file_path}</Text></HStack>}
+                <Box pt={2}><Text color="gray.500" mb={1}>Notes</Text><Text>{selected.application_notes || '—'}</Text></Box>
               </VStack>
             )}
           </ModalBody>

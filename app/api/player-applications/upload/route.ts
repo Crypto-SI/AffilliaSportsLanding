@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured, safeSupabaseOperation } from '@/lib/supabase';
+import { supabaseAdmin, isAdminConfigured } from '@/lib/supabase-admin';
 import { rateLimit } from '@/lib/rate-limit';
 
 // Rate limiting configuration for file uploads
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<FileUploa
     }
 
     // Check if Supabase is configured
-    if (!isSupabaseConfigured) {
+    if (!isAdminConfigured || !supabaseAdmin) {
       console.error('File upload failed: Supabase not configured');
       return NextResponse.json(
         {
@@ -147,18 +147,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<FileUploa
     const filePath = `applications/${secureFileName}`;
 
     // Upload file to Supabase Storage
-    const { data: uploadData, error: uploadError } = await safeSupabaseOperation(
-      async () => {
-        return await supabase.storage
-          .from('player-cvs')
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: false,
-            contentType: file.type,
-          });
-      },
-      30000 // 30 second timeout for file uploads
-    );
+    const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+      .from('player-cvs')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: file.type,
+      });
 
     if (uploadError || !uploadData) {
       console.error('File upload error:', uploadError);
@@ -194,7 +189,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<FileUploa
     }
 
     // Get public URL for the uploaded file
-    const { data: urlData } = supabase.storage
+    const { data: urlData } = supabaseAdmin.storage
       .from('player-cvs')
       .getPublicUrl(filePath);
 

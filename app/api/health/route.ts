@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { supabaseAdmin, isAdminConfigured } from '@/lib/supabase-admin';
 
 export async function GET() {
   try {
     // Check if Supabase is configured
-    if (!isSupabaseConfigured) {
+    if (!isAdminConfigured || !supabaseAdmin) {
       return NextResponse.json(
         { status: 'warning', message: 'Supabase not configured', timestamp: new Date().toISOString() },
         { status: 200 }
@@ -12,7 +12,7 @@ export async function GET() {
     }
 
     // Try a simple query to check database connection
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('affillia_mailing_list')
       .select('id', { count: 'exact', head: true });
 

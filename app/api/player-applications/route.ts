@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured, safeSupabaseOperation } from '@/lib/supabase';
+import { supabaseAdmin, isAdminConfigured } from '@/lib/supabase-admin';
 import { validatePlayerRegistration, calculatePlayerAge, type PlayerRegistrationForm } from '@/lib/player-utils';
 import { rateLimit } from '@/lib/rate-limit';
 import { 
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlayerApp
     }
 
     // Check if Supabase is configured
-    if (!isSupabaseConfigured) {
+    if (!isAdminConfigured || !supabaseAdmin) {
       console.error(`Player application submission failed: Supabase not configured [${requestId}]`);
       return NextResponse.json(
         {
@@ -218,17 +218,18 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlayerApp
     }
 
     // Enhanced duplicate check with better error handling
-    const { data: existingApplication, error: duplicateCheckError } = await safeSupabaseOperation(
-      async () => {
-        return await supabase
+    const { data: existingApplication, error: duplicateCheckError } = await (async () => {
+      try {
+        return await supabaseAdmin
           .from('player_applications')
           .select('id, email, date_of_birth, created_at, name')
           .eq('email', validatedData.email)
           .eq('date_of_birth', validatedData.date_of_birth)
-          .single();
-      },
-      10000
-    );
+          .maybeSingle();
+      } catch (e: any) {
+        return { data: null, error: e };
+      }
+    })();
 
     if (duplicateCheckError && duplicateCheckError.code !== 'PGRST116') {
       // PGRST116 is "no rows returned" which is expected for new applications
@@ -289,16 +290,17 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlayerApp
     }
 
     // Insert application into database with enhanced error handling
-    const { data: application, error: insertError } = await safeSupabaseOperation(
-      async () => {
-        return await supabase
+    const { data: application, error: insertError } = await (async () => {
+      try {
+        return await supabaseAdmin
           .from('player_applications')
           .insert(applicationData)
           .select('id, created_at')
           .single();
-      },
-      15000
-    );
+      } catch (e: any) {
+        return { data: null, error: e };
+      }
+    })();
 
     if (insertError || !application) {
       console.error(`Database insertion error [${requestId}]:`, insertError);

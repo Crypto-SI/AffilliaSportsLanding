@@ -5,8 +5,8 @@ import { NextRequest } from 'next/server';
 const mockSupabaseInsert = vi.fn();
 const mockSupabaseSelect = vi.fn();
 
-vi.mock('@/lib/supabase', () => ({
-  supabase: {
+vi.mock('@/lib/supabase-admin', () => ({
+  supabaseAdmin: {
     from: vi.fn(() => ({
       select: mockSupabaseSelect,
       insert: vi.fn(() => ({
@@ -16,8 +16,7 @@ vi.mock('@/lib/supabase', () => ({
       }))
     }))
   },
-  isSupabaseConfigured: true,
-  safeSupabaseOperation: vi.fn((operation) => operation())
+  isAdminConfigured: true
 }));
 
 vi.mock('@/lib/rate-limit', () => ({
@@ -44,7 +43,8 @@ describe('API Edge Cases with Date of Birth', () => {
     mockSupabaseSelect.mockReturnValue({
       eq: vi.fn(() => ({
         eq: vi.fn(() => ({
-          single: vi.fn(() => Promise.resolve({ data: null, error: { code: 'PGRST116' } }))
+          single: vi.fn(() => Promise.resolve({ data: null, error: { code: 'PGRST116' } })),
+          maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: null }))
         }))
       }))
     });
@@ -448,6 +448,10 @@ describe('API Edge Cases with Date of Birth', () => {
           eq: vi.fn(() => ({
             single: vi.fn(() => Promise.resolve({ 
               data: { id: 'existing-id', email: 'duplicate@example.com' }, 
+              error: null 
+            })),
+            maybeSingle: vi.fn(() => Promise.resolve({ 
+              data: { id: 'existing-id', email: 'duplicate@example.com', created_at: '2024-01-01T00:00:00Z', date_of_birth: '1995-06-15', name: 'Duplicate Email' }, 
               error: null 
             }))
           }))
