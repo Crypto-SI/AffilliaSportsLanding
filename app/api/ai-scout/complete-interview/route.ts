@@ -2,9 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { supabase, handleSupabaseError, safeSupabaseOperation } from '@/lib/supabase'
 
-// Initialize OpenAI client for generating comprehensive recommendations
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+// Lazily initialize the OpenAI client (only when a route actually runs,
+// so builds succeed without OPENAI_API_KEY set)
+let _openai: OpenAI | null = null
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  }
+  return _openai
+}
+const openai = new Proxy({} as OpenAI, {
+  get(_t, prop) { return (getOpenAI() as any)[prop] },
 })
 
 export async function POST(request: NextRequest) {
