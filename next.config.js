@@ -1,7 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   /* config options here */
-  output: 'standalone',
+  // 'standalone' is for Docker self-hosting (see Dockerfile). On Vercel it breaks
+  // build tracing (ENOENT .next/next-server.js.nft.json on Next 16), so only
+  // enable it for non-Vercel builds.
+  ...(process.env.VERCEL === '1' ? {} : { output: 'standalone' }),
   experimental: {
     optimizePackageImports: ["@chakra-ui/react"],
   },
