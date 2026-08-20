@@ -109,13 +109,16 @@ export const getAgeValidationError = (dateOfBirth: Date | string): string => {
     return `Date of birth cannot be ${daysDiff} day${daysDiff > 1 ? 's' : ''} in the future`;
   }
   
-  // Check if date is too far in the past
+  // Check if date is too far in the past.
+  // Compare at calendar-day granularity: a date exactly 100 years ago is valid
+  // (falls through to age checks); only dates MORE than 100 years old are rejected.
   const hundredYearsAgo = new Date();
   hundredYearsAgo.setFullYear(today.getFullYear() - 100);
+  hundredYearsAgo.setHours(0, 0, 0, 0);
   if (birthDate < hundredYearsAgo) {
     return 'Please enter a date of birth within the last 100 years';
   }
-  
+
   const age = calculatePlayerAge(birthDate).age;
   
   if (age < 5) {
