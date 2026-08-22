@@ -11,11 +11,11 @@ export default function HeroSection() {
     <Box
       as="section"
       pt={{ base: "80px", md: "100px" }}
-      pb={32}
+      pb={{ base: 12, md: 32 }}
       position="relative"
       overflow="hidden"
-      height={{ base: "calc(100vh - 0px)", md: "calc(100vh - 0px)" }}
-      minHeight="600px"
+      height={{ base: "auto", md: "calc(100vh)" }}
+      minHeight={{ base: "unset", md: "600px" }}
     >
       {/* Main Hero Background Image */}
       <Box
@@ -109,17 +109,16 @@ export default function HeroSection() {
         </motion.div>
       </Box>
 
-      <Container maxW="1240px" position="relative" zIndex={3} h="100%" display="flex" alignItems="center">
+      <Container maxW="1240px" position="relative" zIndex={3} h={{ base: "auto", md: "100%" }} display="flex" alignItems={{ base: "flex-start", md: "center" }}>
         <VStack 
           spacing={8} 
           align="flex-start" 
           maxW="647px" 
-          mt={{ base: "120px", md: "140px" }}
           pt={{ base: "40px", md: "0" }}
         >
           <AnimatedText
             as="h1"
-            fontSize={{ base: "4xl", md: "6xl", lg: "7xl" }}
+            fontSize={{ base: "3xl", sm: "4xl", md: "6xl", lg: "7xl" }}
             lineHeight="1.1"
             letterSpacing="0.01em"
             fontWeight="400"
@@ -150,7 +149,7 @@ export default function HeroSection() {
               ease: [0.25, 0.1, 0.25, 1.0]
             }}
           >
-            <Flex gap={5} mt={4}>
+            <Flex gap={5} mt={4} width="full" flexWrap="wrap">
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
                 <Button
                   bg="neutral.900"
@@ -158,6 +157,7 @@ export default function HeroSection() {
                   size="lg"
                   px={10}
                   py={6}
+                  width={{ base: "full", sm: "auto" }}
                   height="auto"
                   fontWeight="400"
                   borderRadius="md"
@@ -174,6 +174,7 @@ export default function HeroSection() {
                   size="lg"
                   px={10}
                   py={6}
+                  width={{ base: "full", sm: "auto" }}
                   height="auto"
                   fontWeight="400"
                   borderRadius="md"
