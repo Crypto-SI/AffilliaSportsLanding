@@ -121,21 +121,3 @@ export async function safeSupabaseOperation<T>(
     )
   ]);
 }
-
-// Test connection function
-export async function testSupabaseConnection(): Promise<boolean> {
-  if (!isSupabaseConfigured) {
-    return false;
-  }
-
-  try {
-    const result = await safeSupabaseOperation(
-      () => supabase.from('player_applications').select('count', { count: 'exact' }),
-      5000
-    );
-    return !(result as any).error;
-  } catch (error) {
-    console.error('Supabase connection test failed:', error);
-    return false;
-  }
-} 
