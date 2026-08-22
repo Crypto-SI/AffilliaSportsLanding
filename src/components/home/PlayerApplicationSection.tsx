@@ -48,7 +48,7 @@ export default function PlayerApplicationSection() {
   }
 
   return (
-    <Box as="section" id="player-application" py={20} bg="neutral.50" position="relative">
+    <Box as="section" id="player-application" py={20} bg="neutral.50" position="relative" overflow="hidden">
       <Container maxW="1240px">
         <Flex align="center" justify="space-between" position="relative">
           {/* Left side image */}
