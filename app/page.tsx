@@ -8,6 +8,7 @@ import ServicesSection from '@/components/home/ServicesSection';
 import FinancialAdviceSection from '@/components/home/FinancialAdviceSection';
 import CoachingTeamSection from '@/components/home/CoachingTeamSection';
 import PlayerApplicationSection from '@/components/home/PlayerApplicationSection';
+import AIScoutSection from '@/components/home/AIScoutSection';
 
 export default function Home() {
   return (
@@ -15,6 +16,7 @@ export default function Home() {
       <HeroSection />
       <AboutSection />
       <PlayerPortalSection />
+      <AIScoutSection />
       <ServicesSection />
       <FinancialAdviceSection />
       <CoachingTeamSection />

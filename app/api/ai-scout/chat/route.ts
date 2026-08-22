@@ -1,19 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
-import { supabase, handleSupabaseError, safeSupabaseOperation, AIScoutConversation } from '@/lib/supabase'
-
-// Lazily initialize the OpenAI client (only when a route actually runs,
-// so builds succeed without OPENAI_API_KEY set)
-let _openai: OpenAI | null = null
-function getOpenAI(): OpenAI {
-  if (!_openai) {
-    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-  }
-  return _openai
-}
-const openai = new Proxy({} as OpenAI, {
-  get(_t, prop) { return (getOpenAI() as any)[prop] },
-})
+import { supabaseAdmin, isAdminConfigured } from '@/lib/supabase-admin'
+import { getAIClient, AI_SCOUT_MODEL } from '@/lib/ai-client'
 
 // AI Scout system prompt
 const SYSTEM_PROMPT = `You are an AI Scout for Affillia Sports, a professional football agency. Your role is to conduct interviews with football prospects to assess their potential, personality, and fit for professional football.
@@ -43,6 +30,7 @@ CONVERSATION STYLE:
 - Show enthusiasm for their journey
 - Ask one question at a time to maintain natural flow
 - Acknowledge their responses before moving to the next topic
+- Keep responses concise - typically 2-4 sentences plus one question
 
 Remember: You're evaluating them as a potential client for Affillia Sports. Look for qualities that indicate they could succeed in professional football and would be a good fit for the agency.`
 
@@ -58,16 +46,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if OpenAI is configured
-    if (!process.env.OPENAI_API_KEY) {
+    // Check if AI backend is configured
+    const ai = getAIClient()
+    if (!ai || !isAdminConfigured || !supabaseAdmin) {
       return NextResponse.json(
-        { error: 'OpenAI API key not configured' },
+        { error: 'AI service not configured' },
         { status: 500 }
       )
     }
 
     // Save user message to database
-    const userMessage: Partial<AIScoutConversation> = {
+    const userMessage: any = {
       interview_id,
       role: 'user',
       content: message.trim(),
@@ -77,20 +66,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    await safeSupabaseOperation(
-      () => supabase
-        .from('ai_scout_conversations')
-        .insert([userMessage])
-    )
+    await supabaseAdmin
+      .from('ai_scout_conversations')
+      .insert([userMessage])
 
     // Get conversation history for context
-    const conversationResult = await safeSupabaseOperation(
-      () => supabase
-        .from('ai_scout_conversations')
-        .select('role, content')
-        .eq('interview_id', interview_id)
-        .order('timestamp', { ascending: true })
-    ) as any
+    const conversationResult = await supabaseAdmin
+      .from('ai_scout_conversations')
+      .select('role, content')
+      .eq('interview_id', interview_id)
+      .order('timestamp', { ascending: true })
 
     if (conversationResult.error) {
       console.error('Failed to fetch conversation history:', conversationResult.error)
@@ -100,8 +85,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Build messages for OpenAI
-    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+    // Build messages for the model
+    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
       {
         role: 'system',
         content: SYSTEM_PROMPT
@@ -123,36 +108,34 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Generate AI response
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+    // Generate AI response via OpenRouter
+    // NOTE: ox-alpha is a reasoning model - generous token budget so the
+    // visible answer isn't starved by reasoning tokens
+    const completion = await ai.chat.completions.create({
+      model: AI_SCOUT_MODEL,
       messages: messages,
       temperature: 0.7,
-      max_tokens: 500,
-      presence_penalty: 0.1,
-      frequency_penalty: 0.1
+      max_tokens: 2000,
     })
 
     const aiResponse = completion.choices[0]?.message?.content || 'I apologize, but I cannot generate a response at this time.'
 
     // Save AI response to database
-    const assistantMessage: Partial<AIScoutConversation> = {
+    const assistantMessage: any = {
       interview_id,
       role: 'assistant',
       content: aiResponse,
       metadata: {
         message_type: 'ai_response',
-        model: 'gpt-4o',
+        model: AI_SCOUT_MODEL,
         timestamp: new Date().toISOString(),
         usage: completion.usage
       }
     }
 
-    await safeSupabaseOperation(
-      () => supabase
-        .from('ai_scout_conversations')
-        .insert([assistantMessage])
-    )
+    await supabaseAdmin
+      .from('ai_scout_conversations')
+      .insert([assistantMessage])
 
     return NextResponse.json({
       success: true,
@@ -167,4 +150,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-} 
+}

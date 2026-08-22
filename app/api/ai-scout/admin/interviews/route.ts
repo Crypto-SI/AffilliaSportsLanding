@@ -1,8 +1,66 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase, handleSupabaseError, safeSupabaseOperation } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
+
+// Admin-only route. Auth: verified Supabase session cookie must belong to the
+// whitelisted admin user. All DB work uses the service-role client after the gate.
+
+const ADMIN_UID = '9624a7c9-48bf-49af-9044-89f5a6970d45' // cryptosi@protonmail.com
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+function serviceClient() {
+  if (!supabaseUrl || !serviceKey) return null
+  return createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
+}
+
+/** Verify the caller is the whitelisted admin via their session cookie JWT. */
+async function requireAdmin(request: NextRequest): Promise<boolean> {
+  const cookies = request.cookies
+  const token =
+    cookies.get('sb-access-token')?.value ||
+    Array.from(cookies.getAll())
+      .filter((c) => c.name.startsWith('sb-') && c.name.endsWith('-auth-token'))
+      .map((c) => {
+        try {
+          const parsed = JSON.parse(c.value)
+          return parsed?.access_token || c.value
+        } catch {
+          return c.value
+        }
+      })[0] ||
+    request.headers.get('authorization')?.replace('Bearer ', '')
+
+  if (!token || !supabaseUrl || !anonKey) return false
+
+  // Verify the JWT against GoTrue and check the user id
+  try {
+    const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${token}`,
+      },
+    })
+    if (!res.ok) return false
+    const user = await res.json()
+    return user?.id === ADMIN_UID
+  } catch {
+    return false
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
+    if (!(await requireAdmin(request))) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const admin = serviceClient()
+    if (!admin) {
+      return NextResponse.json({ error: 'Service not configured' }, { status: 500 })
+    }
+
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const limit = parseInt(searchParams.get('limit') || '50')
@@ -11,13 +69,11 @@ export async function GET(request: NextRequest) {
 
     // If requesting a specific interview
     if (interviewId) {
-      const interviewResult = await safeSupabaseOperation(
-        () => supabase
-          .from('ai_scout_interviews')
-          .select('*')
-          .eq('id', interviewId)
-          .single()
-      ) as any
+      const interviewResult = await admin
+        .from('ai_scout_interviews')
+        .select('*')
+        .eq('id', interviewId)
+        .single()
 
       if (interviewResult.error) {
         return NextResponse.json(
@@ -27,24 +83,20 @@ export async function GET(request: NextRequest) {
       }
 
       // Get conversation history
-      const conversationResult = await safeSupabaseOperation(
-        () => supabase
-          .from('ai_scout_conversations')
-          .select('*')
-          .eq('interview_id', interviewId)
-          .order('timestamp', { ascending: true })
-      ) as any
+      const conversationResult = await admin
+        .from('ai_scout_conversations')
+        .select('*')
+        .eq('interview_id', interviewId)
+        .order('timestamp', { ascending: true })
 
       // Get transcript file if available
       let transcriptContent = null
       if (interviewResult.data.conversation_file_path) {
-        const transcriptResult = await safeSupabaseOperation(
-          () => supabase.storage
-            .from('ai-scout-interviews')
-            .download(interviewResult.data.conversation_file_path)
-        ) as any
+        const transcriptResult = await admin.storage
+          .from('ai-scout-interviews')
+          .download(interviewResult.data.conversation_file_path)
 
-        if (!transcriptResult.error) {
+        if (!transcriptResult.error && transcriptResult.data) {
           transcriptContent = await transcriptResult.data.text()
         }
       }
@@ -58,7 +110,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get list of interviews
-    let query = supabase
+    let query = admin
       .from('ai_scout_interviews')
       .select('*')
       .order('created_at', { ascending: false })
@@ -68,7 +120,7 @@ export async function GET(request: NextRequest) {
       query = query.eq('interview_status', status)
     }
 
-    const result = await safeSupabaseOperation(() => query) as any
+    const result = await query
 
     if (result.error) {
       console.error('Failed to fetch interviews:', result.error)
@@ -79,12 +131,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Get total count
-    const countResult = await safeSupabaseOperation(
-      () => supabase
-        .from('ai_scout_interviews')
-        .select('id', { count: 'exact', head: true })
-        .eq('interview_status', status || '')
-    ) as any
+    const countResult = await admin
+      .from('ai_scout_interviews')
+      .select('id', { count: 'exact', head: true })
 
     return NextResponse.json({
       success: true,
@@ -108,6 +157,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    if (!(await requireAdmin(request))) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const admin = serviceClient()
+    if (!admin) {
+      return NextResponse.json({ error: 'Service not configured' }, { status: 500 })
+    }
+
     const body = await request.json()
     const { interview_id, action, notes } = body
 
@@ -136,14 +194,12 @@ export async function POST(request: NextRequest) {
       updateData.admin_notes = notes
     }
 
-    const result = await safeSupabaseOperation(
-      () => supabase
-        .from('ai_scout_interviews')
-        .update(updateData)
-        .eq('id', interview_id)
-        .select()
-        .single()
-    ) as any
+    const result = await admin
+      .from('ai_scout_interviews')
+      .update(updateData)
+      .eq('id', interview_id)
+      .select()
+      .single()
 
     if (result.error) {
       return NextResponse.json(
@@ -165,4 +221,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-} 
+}

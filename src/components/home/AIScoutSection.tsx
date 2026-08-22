@@ -1,13 +1,17 @@
 'use client'
 
-import { Box, Container, Heading, Text, VStack, Badge, HStack } from '@chakra-ui/react'
+import { useState } from 'react'
+import { Box, Container, Heading, Text, VStack, Badge, HStack, Button, Collapse } from '@chakra-ui/react'
 import { motion } from 'motion/react'
+import AIScoutChat from '@/components/ui/AIScoutChat'
 
 const MotionBox = motion(Box)
 
 export default function AIScoutSection() {
+  const [chatOpen, setChatOpen] = useState(false)
+
   return (
-    <Box id="ai-scout" py={20} bg="gradient-to-br from-blue-50 to-green-50">
+    <Box id="ai-scout" py={20} bg="gray.50">
       <Container maxW="6xl">
         <VStack spacing={12} align="center" textAlign="center">
           <MotionBox
@@ -24,8 +28,8 @@ export default function AIScoutSection() {
                 Meet Your AI Scout
               </Heading>
               <Text fontSize="xl" color="gray.600" maxW="3xl">
-                Experience the future of football scouting with our AI-powered interview system. 
-                Our intelligent scout conducts personalized interviews to assess your potential, 
+                Experience the future of football scouting with our AI-powered interview system.{' '}
+                Our intelligent scout conducts personalized interviews to assess your potential,{' '}
                 creating detailed reports for our professional evaluation team.
               </Text>
             </VStack>
@@ -41,20 +45,12 @@ export default function AIScoutSection() {
               <HStack spacing={8} justify="center" flexWrap="wrap">
                 <VStack spacing={2} align="center">
                   <Box
-                    w={16}
-                    h={16}
-                    bg="blue.100"
-                    borderRadius="full"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    fontSize="2xl"
+                    w={16} h={16} bg="blue.100" borderRadius="full"
+                    display="flex" alignItems="center" justifyContent="center" fontSize="2xl"
                   >
                     🤖
                   </Box>
-                  <Text fontWeight="semibold" color="gray.700">
-                    AI Interview
-                  </Text>
+                  <Text fontWeight="semibold" color="gray.700">AI Interview</Text>
                   <Text fontSize="sm" color="gray.600" textAlign="center">
                     Intelligent conversation<br />about your football journey
                   </Text>
@@ -62,20 +58,12 @@ export default function AIScoutSection() {
 
                 <VStack spacing={2} align="center">
                   <Box
-                    w={16}
-                    h={16}
-                    bg="green.100"
-                    borderRadius="full"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    fontSize="2xl"
+                    w={16} h={16} bg="green.100" borderRadius="full"
+                    display="flex" alignItems="center" justifyContent="center" fontSize="2xl"
                   >
                     📝
                   </Box>
-                  <Text fontWeight="semibold" color="gray.700">
-                    Detailed Report
-                  </Text>
+                  <Text fontWeight="semibold" color="gray.700">Detailed Report</Text>
                   <Text fontSize="sm" color="gray.600" textAlign="center">
                     AI-generated assessment<br />and recommendation
                   </Text>
@@ -83,20 +71,12 @@ export default function AIScoutSection() {
 
                 <VStack spacing={2} align="center">
                   <Box
-                    w={16}
-                    h={16}
-                    bg="purple.100"
-                    borderRadius="full"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    fontSize="2xl"
+                    w={16} h={16} bg="purple.100" borderRadius="full"
+                    display="flex" alignItems="center" justifyContent="center" fontSize="2xl"
                   >
                     ⚽
                   </Box>
-                  <Text fontWeight="semibold" color="gray.700">
-                    Professional Review
-                  </Text>
+                  <Text fontWeight="semibold" color="gray.700">Professional Review</Text>
                   <Text fontSize="sm" color="gray.600" textAlign="center">
                     Expert evaluation by<br />our scouting team
                   </Text>
@@ -104,27 +84,32 @@ export default function AIScoutSection() {
               </HStack>
 
               <VStack spacing={4}>
-                <Badge
-                  colorScheme="orange"
-                  fontSize="lg"
-                  px={6}
-                  py={3}
+                <Button
+                  colorScheme="green"
+                  size="lg"
                   borderRadius="full"
-                  textTransform="uppercase"
-                  letterSpacing="wide"
+                  px={10}
+                  py={7}
+                  fontSize="lg"
                   fontWeight="bold"
+                  onClick={() => setChatOpen((o) => !o)}
                 >
-                  Coming Soon
-                </Badge>
-                
+                  {chatOpen ? 'Close Interview' : 'Start Your AI Scout Interview'}
+                </Button>
                 <Text fontSize="sm" color="gray.500">
-                  AI Scout interviews launching soon • Stay tuned for updates
+                  Free · Takes 10-15 minutes · Instant AI assessment for our scouting team
                 </Text>
               </VStack>
             </VStack>
           </MotionBox>
+
+          <Collapse in={chatOpen} startingHeight={0} animateOpacity>
+            <Box w="100%" maxW="4xl" mx="auto" pb={6}>
+              <AIScoutChat />
+            </Box>
+          </Collapse>
         </VStack>
       </Container>
     </Box>
   )
-} 
+}

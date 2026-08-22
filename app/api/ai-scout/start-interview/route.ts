@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase, handleSupabaseError, safeSupabaseOperation, AIScoutInterview } from '@/lib/supabase'
+import { supabaseAdmin, isAdminConfigured } from '@/lib/supabase-admin'
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new interview record
-    const interviewData: Partial<AIScoutInterview> = {
+    const interviewData: any = {
       prospect_name: prospect_name.trim(),
       prospect_email: prospect_email?.trim() || null,
       prospect_phone: prospect_phone?.trim() || null,
@@ -27,18 +27,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const result = await safeSupabaseOperation(
-      () => supabase
-        .from('ai_scout_interviews')
-        .insert([interviewData])
-        .select()
-        .single()
-    ) as any
+    if (!isAdminConfigured || !supabaseAdmin) {
+      return NextResponse.json({ error: 'Service not configured' }, { status: 500 })
+    }
+    const result = await supabaseAdmin
+      .from('ai_scout_interviews')
+      .insert([interviewData])
+      .select()
+      .single()
 
     if (result.error) {
       console.error('Failed to create interview:', result.error)
       return NextResponse.json(
-        { error: handleSupabaseError(result.error) },
+        { error: result.error?.message || 'Failed to create interview' },
         { status: 500 }
       )
     }
@@ -56,11 +57,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    await safeSupabaseOperation(
-      () => supabase
-        .from('ai_scout_conversations')
-        .insert([systemMessage])
-    )
+    await supabaseAdmin
+      .from('ai_scout_conversations')
+      .insert([systemMessage])
 
     return NextResponse.json({
       success: true,

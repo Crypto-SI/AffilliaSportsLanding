@@ -28,6 +28,8 @@ import {
   Divider
 } from '@chakra-ui/react'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAdminSession } from '@/lib/admin-auth'
 
 interface Interview {
   id: string
@@ -52,6 +54,8 @@ interface InterviewDetail extends Interview {
 }
 
 export default function AdminAIScoutPage() {
+  const router = useRouter()
+  const { session, loading: sessionLoading } = useAdminSession()
   const [interviews, setInterviews] = useState<Interview[]>([])
   const [selectedInterview, setSelectedInterview] = useState<InterviewDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -60,8 +64,12 @@ export default function AdminAIScoutPage() {
   const { isOpen, onOpen, onClose } = useDisclosure()
 
   useEffect(() => {
-    fetchInterviews()
-  }, [filter])
+    if (!sessionLoading && !session) router.replace('/admin/login')
+  }, [sessionLoading, session, router])
+
+  useEffect(() => {
+    if (session) fetchInterviews()
+  }, [filter, session])
 
   const fetchInterviews = async () => {
     setLoading(true)
@@ -72,7 +80,7 @@ export default function AdminAIScoutPage() {
         ? '/api/ai-scout/admin/interviews' 
         : `/api/ai-scout/admin/interviews?status=${filter}`
       
-      const response = await fetch(url)
+      const response = await fetch(url, { credentials: 'include' })
       const data = await response.json()
 
       if (!response.ok) {
@@ -92,7 +100,7 @@ export default function AdminAIScoutPage() {
     setLoading(true)
     
     try {
-      const response = await fetch(`/api/ai-scout/admin/interviews?interview_id=${interviewId}`)
+      const response = await fetch(`/api/ai-scout/admin/interviews?interview_id=${interviewId}`, { credentials: 'include' })
       const data = await response.json()
 
       if (!response.ok) {
@@ -129,7 +137,15 @@ export default function AdminAIScoutPage() {
   }
 
   if (loading && interviews.length === 0) {
+    if (sessionLoading || !session) {
     return (
+      <Container maxW="container.xl" py={20} centerContent>
+        <Spinner size="xl" />
+      </Container>
+    )
+  }
+
+  return (
       <Container maxW="6xl" py={8}>
         <VStack spacing={8}>
           <Heading>AI Scout Admin</Heading>

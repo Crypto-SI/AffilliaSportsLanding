@@ -1,19 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
-import { supabase, handleSupabaseError, safeSupabaseOperation } from '@/lib/supabase'
 
-// Lazily initialize the OpenAI client (only when a route actually runs,
-// so builds succeed without OPENAI_API_KEY set)
-let _openai: OpenAI | null = null
-function getOpenAI(): OpenAI {
-  if (!_openai) {
-    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-  }
-  return _openai
-}
-const openai = new Proxy({} as OpenAI, {
-  get(_t, prop) { return (getOpenAI() as any)[prop] },
-})
+import { supabaseAdmin, isAdminConfigured } from '@/lib/supabase-admin'
+import { getAIClient, AI_SCOUT_MODEL } from '@/lib/ai-client'
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,14 +15,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (!isAdminConfigured || !supabaseAdmin) {
+      return NextResponse.json({ error: 'Service not configured' }, { status: 500 })
+    }
+
     // Get full conversation history
-    const conversationResult = await safeSupabaseOperation(
-      () => supabase
-        .from('ai_scout_conversations')
-        .select('role, content, timestamp')
-        .eq('interview_id', interview_id)
-        .order('timestamp', { ascending: true })
-    ) as any
+    const conversationResult = await supabaseAdmin
+      .from('ai_scout_conversations')
+      .select('role, content, timestamp')
+      .eq('interview_id', interview_id)
+      .order('timestamp', { ascending: true })
 
     if (conversationResult.error) {
       console.error('Failed to fetch conversation:', conversationResult.error)
@@ -71,14 +61,12 @@ End of Interview`
 
     // Upload transcript to Supabase Storage
     const fileName = `interview_${interview_id}_${Date.now()}.txt`
-    const uploadResult = await safeSupabaseOperation(
-      () => supabase.storage
-        .from('ai-scout-interviews')
-        .upload(fileName, fullTranscript, {
-          contentType: 'text/plain',
-          upsert: false
-        })
-    ) as any
+    const uploadResult = await supabaseAdmin.storage
+      .from('ai-scout-interviews')
+      .upload(fileName, fullTranscript, {
+        contentType: 'text/plain',
+        upsert: false
+      })
 
     if (uploadResult.error) {
       console.error('Failed to upload transcript:', uploadResult.error)
@@ -94,7 +82,8 @@ End of Interview`
     let aiRecommendation = ''
     let recommendationScore = 5
 
-    if (process.env.OPENAI_API_KEY) {
+    const ai = getAIClient()
+    if (ai) {
       try {
         const recommendationPrompt = `As a professional football scout, analyze this interview transcript and provide a comprehensive assessment:
 
@@ -114,12 +103,12 @@ Please provide a detailed assessment covering:
 
 Be honest, professional, and constructive in your assessment. Focus on football potential, character, communication skills, and fit for professional representation.`
 
-        const completion = await openai.chat.completions.create({
-          model: 'gpt-4o',
+        const completion = await ai.chat.completions.create({
+          model: AI_SCOUT_MODEL,
           messages: [
             {
               role: 'system',
-              content: 'You are a professional football scout with 20+ years of experience evaluating prospects for top-tier representation. Provide detailed, honest assessments based on interview conversations.'
+              content: 'You are a professional football scout with 20+ years of experience evaluating prospects for top-tier representation. Provide detailed, honest assessments based on interview conversations. Always include an overall impression score formatted as "X/10".'
             },
             {
               role: 'user',
@@ -127,7 +116,7 @@ Be honest, professional, and constructive in your assessment. Focus on football 
             }
           ],
           temperature: 0.3,
-          max_tokens: 1000
+          max_tokens: 4000
         })
 
         aiRecommendation = completion.choices[0]?.message?.content || 'Unable to generate recommendation at this time.'
@@ -175,14 +164,12 @@ The prospect demonstrated engagement by completing the interview process and ans
       }
     }
 
-    const updateResult = await safeSupabaseOperation(
-      () => supabase
-        .from('ai_scout_interviews')
-        .update(updateData)
-        .eq('id', interview_id)
-        .select()
-        .single()
-    ) as any
+    const updateResult = await supabaseAdmin
+      .from('ai_scout_interviews')
+      .update(updateData)
+      .eq('id', interview_id)
+      .select()
+      .single()
 
     if (updateResult.error) {
       console.error('Failed to update interview:', updateResult.error)
