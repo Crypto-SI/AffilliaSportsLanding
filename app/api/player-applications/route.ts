@@ -1,25 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, isAdminConfigured } from '@/lib/supabase-admin';
-import { validatePlayerRegistration, calculatePlayerAge, type PlayerRegistrationForm } from '@/lib/player-utils';
+import { validatePlayerRegistration, calculatePlayerAge } from '@/lib/player-utils';
 import { rateLimit } from '@/lib/rate-limit';
-import { 
-  sanitizeYouthPlayerData, 
-  createYouthAuditLog, 
+import {
+  sanitizeYouthPlayerData,
+  createYouthAuditLog,
   requiresAdditionalVerification,
   generateSecureYouthToken,
-  YOUTH_SECURITY_CONFIG 
+  YOUTH_SECURITY_CONFIG
 } from '@/lib/youth-security';
+import { getClientIp, makeRequestId } from '@/lib/applications/http';
 
 // Rate limiting configuration
 const limiter = rateLimit({
-  interval: 60 * 1000, // 1 minute
-  uniqueTokenPerInterval: 500, // Max 500 unique IPs per minute
+  interval: 60 * 1000,
+  uniqueTokenPerInterval: 500,
 });
 
-// Enhanced rate limiting for youth applications
 const youthLimiter = rateLimit({
   interval: YOUTH_SECURITY_CONFIG.YOUTH_RATE_LIMIT.windowMs,
-  uniqueTokenPerInterval: 100, // Smaller pool for youth applications
+  uniqueTokenPerInterval: 100,
 });
 
 interface PlayerApplicationRequest {
@@ -41,100 +41,82 @@ interface PlayerApplicationResponse {
   validation_errors?: Record<string, string>;
 }
 
+function fail(
+  body: PlayerApplicationResponse,
+  status: number,
+  requestId: string,
+  retryAfter?: string
+): NextResponse<PlayerApplicationResponse> {
+  const headers: Record<string, string> = { 'X-Request-ID': requestId };
+  if (retryAfter) headers['Retry-After'] = retryAfter;
+  return NextResponse.json(body, { status, headers });
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse<PlayerApplicationResponse>> {
   const startTime = Date.now();
-  let requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
+  const requestId = makeRequestId();
+
   try {
-    
-    // Rate limiting with more specific error messages
-    const ip = request.headers.get('x-forwarded-for') ?? 
-               request.headers.get('x-real-ip') ?? 
-               request.headers.get('cf-connecting-ip') ?? 
-               'anonymous';
-    
+    const ip = getClientIp(request);
+
+    // 1) Rate limit
     try {
-      await limiter.check(10, ip); // 10 requests per minute per IP
-    } catch (rateLimitError) {
+      await limiter.check(10, ip);
+    } catch {
       console.warn(`Rate limit exceeded for IP: ${ip} [${requestId}]`);
-      return NextResponse.json(
+      return fail(
         {
           success: false,
           error: 'Too many requests from your location. Please wait 60 seconds before submitting again.',
         },
-        { 
-          status: 429,
-          headers: {
-            'Retry-After': '60',
-            'X-Request-ID': requestId
-          }
-        }
+        429,
+        requestId,
+        '60'
       );
     }
 
-    // Check if Supabase is configured
+    // 2) Config gate
     if (!isAdminConfigured || !supabaseAdmin) {
       console.error(`Player application submission failed: Supabase not configured [${requestId}]`);
-      return NextResponse.json(
+      return fail(
         {
           success: false,
           error: 'Our registration system is temporarily unavailable. Please try again in a few minutes or contact support if the problem persists.',
         },
-        { 
-          status: 503,
-          headers: { 'X-Request-ID': requestId }
-        }
+        503,
+        requestId
       );
     }
 
-    // Parse request body with detailed error handling
+    // 3) Parse body
     let requestData: PlayerApplicationRequest;
     try {
       const body = await request.text();
       if (!body || body.trim() === '') {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Request body is empty. Please ensure all form data is included.',
-          },
-          { 
-            status: 400,
-            headers: { 'X-Request-ID': requestId }
-          }
+        return fail(
+          { success: false, error: 'Request body is empty. Please ensure all form data is included.' },
+          400,
+          requestId
         );
       }
-      
       requestData = JSON.parse(body);
-      
-      // Basic structure validation
       if (!requestData || typeof requestData !== 'object') {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Invalid request format. Please refresh the page and try again.',
-          },
-          { 
-            status: 400,
-            headers: { 'X-Request-ID': requestId }
-          }
+        return fail(
+          { success: false, error: 'Invalid request format. Please refresh the page and try again.' },
+          400,
+          requestId
         );
       }
-      
-    } catch (parseError) {
-      console.error(`JSON parsing error [${requestId}]:`, parseError);
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Invalid request data format. Please refresh the page and try submitting again.',
-        },
-        { 
-          status: 400,
-          headers: { 'X-Request-ID': requestId }
-        }
+    } catch {
+      console.error(`JSON parsing error [${requestId}]`);
+      return fail(
+        { success: false, error: 'Invalid request data format. Please refresh the page and try submitting again.' },
+        400,
+        requestId
       );
     }
 
-    // Enhanced server-side validation using Zod schema
+    // 4) Validate
     const validation = validatePlayerRegistration({
       name: requestData.name?.trim(),
       email: requestData.email?.trim()?.toLowerCase(),
@@ -148,122 +130,102 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlayerApp
 
     if (!validation.success) {
       console.warn(`Validation failed [${requestId}]:`, validation.errors);
-      
-      // Create user-friendly error messages
       const errorCount = Object.keys(validation.errors || {}).length;
       const primaryError = Object.values(validation.errors || {})[0] || 'Validation failed';
-      
-      return NextResponse.json(
+      return fail(
         {
           success: false,
           error: `Please correct ${errorCount} validation error${errorCount > 1 ? 's' : ''} and try again.`,
           validation_errors: validation.errors,
         },
-        { 
-          status: 400,
-          headers: { 'X-Request-ID': requestId }
-        }
+        400,
+        requestId
       );
     }
 
     const validatedData = validation.data!;
 
-    // Determine if this is a youth application and apply enhanced security
+    // 5) Youth security: age, tighter rate limit, additional verification
     const ageCalculation = calculatePlayerAge(validatedData.date_of_birth);
-    const isYouthApplication = ageCalculation.isYouth;
+    const isYouth = ageCalculation.isYouth;
 
-    // Enhanced rate limiting for youth applications
-    if (isYouthApplication) {
+    if (isYouth) {
       try {
         await youthLimiter.check(YOUTH_SECURITY_CONFIG.YOUTH_RATE_LIMIT.maxSubmissions, ip);
-      } catch (youthRateLimitError) {
+      } catch {
         console.warn(`Youth application rate limit exceeded for IP: ${ip} [${requestId}]`);
-        return NextResponse.json(
+        return fail(
           {
             success: false,
             error: 'Too many youth applications from your location. For security reasons, please wait 1 hour before submitting another youth application.',
           },
-          { 
-            status: 429,
-            headers: {
-              'Retry-After': '3600', // 1 hour
-              'X-Request-ID': requestId
-            }
-          }
+          429,
+          requestId,
+          '3600'
         );
       }
-    }
 
-    // Additional verification check for youth applications
-    if (isYouthApplication) {
       const verificationCheck = requiresAdditionalVerification(
         validatedData.email,
         validatedData.phone || '',
         validatedData.date_of_birth
       );
-
       if (verificationCheck.required) {
         console.warn(`Youth application requires additional verification [${requestId}]:`, verificationCheck.reasons);
-        return NextResponse.json(
+        return fail(
           {
             success: false,
             error: 'Additional verification is required for this youth application. Please ensure you are using valid parent/guardian contact information and try again.',
           },
-          { 
-            status: 400,
-            headers: { 'X-Request-ID': requestId }
-          }
+          400,
+          requestId
         );
       }
     }
 
-    // Enhanced duplicate check with better error handling
-    const { data: existingApplication, error: duplicateCheckError } = await (async () => {
+    // 6) Duplicate check
+    let existingApplication: any = null;
+    {
+      let result: any;
       try {
-        return await supabaseAdmin
+        result = await supabaseAdmin
           .from('player_applications')
           .select('id, email, date_of_birth, created_at, name')
           .eq('email', validatedData.email)
           .eq('date_of_birth', validatedData.date_of_birth)
           .maybeSingle();
       } catch (e: any) {
-        return { data: null, error: e };
+        result = { data: null, error: e };
       }
-    })();
-
-    if (duplicateCheckError && duplicateCheckError.code !== 'PGRST116') {
-      // PGRST116 is "no rows returned" which is expected for new applications
-      console.error(`Duplicate check error [${requestId}]:`, duplicateCheckError);
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unable to verify application uniqueness. Please try again in a moment.',
-        },
-        { 
-          status: 500,
-          headers: { 'X-Request-ID': requestId }
-        }
-      );
+      if (result.error && result.error.code !== 'PGRST116') {
+        console.error(`Duplicate check error [${requestId}]:`, result.error);
+        return fail(
+          {
+            success: false,
+            error: 'Unable to verify application uniqueness. Please try again in a moment.',
+          },
+          500,
+          requestId
+        );
+      }
+      existingApplication = result.data;
     }
 
     if (existingApplication) {
       const existingDate = new Date(existingApplication.created_at).toLocaleDateString();
       console.warn(`Duplicate application attempt [${requestId}]: ${validatedData.email} - ${validatedData.date_of_birth}`);
-      
-      return NextResponse.json(
+      return fail(
         {
           success: false,
-          error: `An application for this player already exists (submitted on ${existingDate}). If you need to update your information, please contact our support team.`,
+          error: `An application with this email and date of birth already exists (submitted ${existingDate}). If you believe this is an error, please contact our team.`,
         },
-        { 
-          status: 409,
-          headers: { 'X-Request-ID': requestId }
-        }
+        409,
+        requestId
       );
     }
 
-    // Prepare application data for database insertion with youth security enhancements
-    let applicationData = {
+    // 7) Build row (youth sanitization + metadata)
+    let applicationData: any = {
       name: validatedData.name,
       email: validatedData.email,
       phone: validatedData.phone,
@@ -274,12 +236,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlayerApp
       cv_file_path: validatedData.cv_file_path,
     };
 
-    // Apply youth-specific data sanitization and security measures
-    if (isYouthApplication) {
+    if (isYouth) {
       applicationData = sanitizeYouthPlayerData(applicationData, true);
-      
-      // Add youth-specific metadata for enhanced tracking and compliance
-      (applicationData as any).metadata = {
+      applicationData.metadata = {
         is_youth_application: true,
         requires_parent_consent: true,
         enhanced_privacy: true,
@@ -289,80 +248,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlayerApp
       };
     }
 
-    // Insert application into database with enhanced error handling
-    const { data: application, error: insertError } = await (async () => {
-      try {
-        return await supabaseAdmin
-          .from('player_applications')
-          .insert(applicationData)
-          .select('id, created_at')
-          .single();
-      } catch (e: any) {
-        return { data: null, error: e };
-      }
-    })();
+    // 8) Insert
+    const application = await insertApplication(applicationData);
 
-    if (insertError || !application) {
-      console.error(`Database insertion error [${requestId}]:`, insertError);
-      
-      // Handle specific database errors with user-friendly messages
-      if (insertError?.code === '23505') {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'An application with this information already exists. Please check your details or contact support.',
-          },
-          { 
-            status: 409,
-            headers: { 'X-Request-ID': requestId }
-          }
-        );
-      }
-      
-      if (insertError?.code === '23502') {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Required information is missing. Please ensure all required fields are completed.',
-          },
-          { 
-            status: 400,
-            headers: { 'X-Request-ID': requestId }
-          }
-        );
-      }
-      
-      if (insertError?.code === '23514') {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Some information provided does not meet our requirements. Please check your entries and try again.',
-          },
-          { 
-            status: 400,
-            headers: { 'X-Request-ID': requestId }
-          }
-        );
-      }
-
-      // Generic database error
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unable to save your application at this time. Please try again in a few moments.',
-        },
-        { 
-          status: 500,
-          headers: { 'X-Request-ID': requestId }
-        }
-      );
-    }
-
-    // Calculate processing time
+    // 9) Youth audit trail
     const processingTime = Date.now() - startTime;
-    
-    // Enhanced logging and audit trail for youth applications
-    if (isYouthApplication) {
+    if (isYouth) {
       const auditLog = createYouthAuditLog(
         application.id,
         'youth_application_submitted',
@@ -375,24 +266,18 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlayerApp
         },
         ip
       );
-      
       console.log(`Youth application audit log [${requestId}]:`, JSON.stringify(auditLog));
-      
-      // Generate secure tracking token for youth applications
       const secureToken = generateSecureYouthToken(application.id);
       console.log(`Youth application secure token generated [${requestId}]: ${secureToken}`);
     }
-    
-    // Log successful submission (without sensitive data)
-    const logMessage = isYouthApplication 
+
+    const logMessage = isYouth
       ? `Youth player application submitted successfully [${requestId}]: ${application.id} (${processingTime}ms) - Enhanced security applied`
       : `Player application submitted successfully [${requestId}]: ${application.id} (${processingTime}ms)`;
-    
     console.log(logMessage);
 
-    // Customize success message based on application type
-    const successMessage = isYouthApplication
-      ? 'Youth application submitted successfully! We will review the application and contact the parent/guardian within 48 hours. Enhanced security measures have been applied to protect the youth player\'s information.'
+    const successMessage = isYouth
+      ? "Youth application submitted successfully! We will review the application and contact the parent/guardian within 48 hours. Enhanced security measures have been applied to protect the youth player's information."
       : 'Application submitted successfully! We will review your application and contact you within 48 hours.';
 
     return NextResponse.json(
@@ -400,24 +285,25 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlayerApp
         success: true,
         application_id: application.id,
         message: successMessage,
-        ...(isYouthApplication && { 
-          security_notice: 'This youth application is subject to enhanced privacy protection and parental consent requirements.' 
-        })
+        ...(isYouth && {
+          security_notice: 'This youth application is subject to enhanced privacy protection and parental consent requirements.',
+        }),
       },
-      { 
-        status: 201,
-        headers: { 'X-Request-ID': requestId }
-      }
+      { status: 201, headers: { 'X-Request-ID': requestId } }
     );
 
-  } catch (error) {
+  } catch (error: any) {
     const processingTime = Date.now() - startTime;
-    console.error(`Player application API error [${requestId || 'unknown'}] (${processingTime}ms):`, error);
-    
-    // Determine error type and provide appropriate response
+    console.error(`Player application API error [${requestId}] (${processingTime}ms):`, error);
+
+    // Typed DB errors from insertApplication carry their own status + message
+    if (error?.statusCode && error?.clientMessage) {
+      return fail({ success: false, error: error.clientMessage }, error.statusCode, requestId);
+    }
+
     let errorMessage = 'An unexpected error occurred. Please try again later.';
     let statusCode = 500;
-    
+
     if (error instanceof Error) {
       if (error.message.includes('timeout')) {
         errorMessage = 'Request timed out. Please try again with a stable internet connection.';
@@ -430,38 +316,50 @@ export async function POST(request: NextRequest): Promise<NextResponse<PlayerApp
         statusCode = 503;
       }
     }
-    
-    return NextResponse.json(
-      {
-        success: false,
-        error: errorMessage,
-      },
-      { 
-        status: statusCode,
-        headers: { 'X-Request-ID': requestId || 'unknown' }
-      }
-    );
+
+    return fail({ success: false, error: errorMessage }, statusCode, requestId);
   }
+}
+
+// Shared insert with the route's exact error-mapping behavior
+async function insertApplication(applicationData: any): Promise<{ id: string }> {
+  let result: any;
+  try {
+    result = await supabaseAdmin
+      .from('player_applications')
+      .insert(applicationData)
+      .select('id, created_at')
+      .single();
+  } catch (e: any) {
+    result = { data: null, error: e };
+  }
+
+  if (result.error || !result.data) {
+    console.error(`Database insertion error:`, result.error);
+    const code = result.error?.code;
+    if (code === '23505') {
+      throw Object.assign(new Error('DUPLICATE_23505'), { statusCode: 409, clientMessage: 'An application with this information already exists. Please check your details or contact support.' });
+    }
+    if (code === '23502') {
+      throw Object.assign(new Error('MISSING_23502'), { statusCode: 400, clientMessage: 'Required information is missing. Please ensure all required fields are completed.' });
+    }
+    if (code === '23514') {
+      throw Object.assign(new Error('INVALID_23514'), { statusCode: 400, clientMessage: 'One or more fields contain invalid data. Please review and try again.' });
+    }
+    throw Object.assign(new Error('DB_ERROR'), { statusCode: 500, clientMessage: 'Unable to save your application at this time. Please try again in a few minutes.' });
+  }
+  return result.data;
 }
 
 // Handle unsupported methods
 export async function GET(): Promise<NextResponse> {
-  return NextResponse.json(
-    { error: 'Method not allowed' },
-    { status: 405 }
-  );
+  return NextResponse.json({ success: false, error: 'Method not allowed' }, { status: 405 });
 }
 
 export async function PUT(): Promise<NextResponse> {
-  return NextResponse.json(
-    { error: 'Method not allowed' },
-    { status: 405 }
-  );
+  return NextResponse.json({ success: false, error: 'Method not allowed' }, { status: 405 });
 }
 
 export async function DELETE(): Promise<NextResponse> {
-  return NextResponse.json(
-    { error: 'Method not allowed' },
-    { status: 405 }
-  );
+  return NextResponse.json({ success: false, error: 'Method not allowed' }, { status: 405 });
 }
