@@ -218,7 +218,7 @@ export default function AboutSection() {
                     flexShrink={0}
                   >
                     <Image
-                      src="/images/tommy.png"
+                      src="/images/tommy.webp"
                       alt="Tom White, Founder"
                       fill
                       style={{ 
@@ -280,7 +280,7 @@ export default function AboutSection() {
                     flexShrink={0}
                   >
                     <Image
-                      src="/images/carl.png"
+                      src="/images/carl.webp"
                       alt="Carl Anthony, Founder"
                       fill
                       style={{ objectFit: 'cover' }}

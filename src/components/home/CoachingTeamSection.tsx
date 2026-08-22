@@ -149,7 +149,7 @@ export default function CoachingTeamSection() {
       name: 'Jude Stirling',
       position: 'Coach/Scout - London Elite M/F U6s/U16s',
       description: "Jude is one of the directors of London Elite, based in Broadwater farm north london, with a spectacular catchment area, having coached dozens of professionals, Judes commitment to giving pro footballers the best start is unwaivering, along with his fathers Classford Stirling MBE.",
-      imageSrc: '/images/jude.png',
+      imageSrc: '/images/jude.webp',
       imageAlt: 'Jude Stirling, Coach/Scout',
       websiteUrl: "#"
     },
@@ -157,14 +157,14 @@ export default function CoachingTeamSection() {
       name: "Poku Kesse",
       position: "Lead Talent Scout",
       description: "Poku's journey in football reached high semi pro level, but it was his love for fitness and business where he really shone, having cultivated his own personal training business over many years he joins Affillia Sports as a qualified football scout, with extensive ties to West african football. His experience of multiple cultures and their business settings makes him invaluable in our mission",
-      imageSrc: "/images/POKU.png",
+      imageSrc: "/images/POKU.webp",
       imageAlt: "Poku Kesse, Lead Talent Scout"
     },
     {
       name: "You?",
       position: "Future Collaborator - High Agency Prospect",
       description: "This spot could be yours! We're looking to collaborate with ambitious, high-agency individuals in the football world. If you are proactive, passionate, and want to make a real impact, reach out to us. Let's build something great together.",
-      imageSrc: "/images/qm.png",
+      imageSrc: "/images/qm.webp",
       imageAlt: "Your photo here - Join our team!",
       websiteUrl: "mailto:info@affilliasports.com"
     },
@@ -172,7 +172,7 @@ export default function CoachingTeamSection() {
       name: "Anton Jacob",
       position: "Manager",
       description: "Anton is a highly respected coach from east anglia, having coached many young professionals and an incredible amount of academy level prospects, Anton is advancing his managerial career. Qualified to Uefa B level, he's currently studying for his A while managing in the English Non-league",
-      imageSrc: "/images/anthon.png",
+      imageSrc: "/images/anthon.webp",
       imageAlt: "Anton Jacob, Manager"
     }
   ];

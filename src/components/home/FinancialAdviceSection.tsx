@@ -158,7 +158,7 @@ export default function FinancialAdviceSection() {
       name: "Matthew Jones, DipPFS",
       title: "Director of Apex Financial Services",
       description: "Matthew is dedicated to providing expert financial advice characterized by quality, integrity, and excellence. He focuses on building lasting relationships with his clients, ensuring their financial peace of mind. Matthew specializes in retirement planning, long-term care, and advising business owners, company directors, financial professionals, and private clients.",
-      imageSrc: "/images/matt.png",
+      imageSrc: "/images/matt.webp",
       imageAlt: "Matthew Jones, Financial Advisor",
       websiteUrl: "https://partnership.sjp.co.uk/apexfinancialservices/"
     },
@@ -166,7 +166,7 @@ export default function FinancialAdviceSection() {
       name: "Paul Wilson, DipPFS",
       title: "Wealth Management Partner at True Potential LLP",
       description: "Paul is a trusted financial adviser focused on helping clients achieve long-term security through tailored retirement and investment strategies. With a client-first approach, he provides clear, practical guidance on everything from income planning to wealth protection, empowering individuals and families to make confident financial decisions.",
-      imageSrc: "/images/paul.png",
+      imageSrc: "/images/paul.webp",
       imageAlt: "Paul Wilson, Financial Advisor",
       websiteUrl: "https://www.truepotential.co.uk/"
     }

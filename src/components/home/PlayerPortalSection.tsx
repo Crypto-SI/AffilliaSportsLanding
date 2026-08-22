@@ -149,7 +149,7 @@ export default function PlayerPortalSection() {
               alignItems="center"
             >
               <Image 
-                src="/images/portal.png"
+                src="/images/portal.webp"
                 alt="Player portal dashboard showing performance metrics and scout reports"
                 style={{ 
                   objectFit: 'contain',
