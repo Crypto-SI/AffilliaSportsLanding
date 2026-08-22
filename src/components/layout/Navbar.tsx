@@ -1,20 +1,25 @@
 'use client';
 
-import { Box, Flex, Text, Button, HStack, Image, Container, useColorModeValue } from '@chakra-ui/react';
-import Link from 'next/link';
+import { Box, Flex, Text, HStack, Container, IconButton, VStack, useDisclosure, Collapse } from '@chakra-ui/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { HiOutlineMenu, HiOutlineX } from 'react-icons/hi';
+
+const NAV_LINKS = [
+  { name: 'About Us', id: 'about' },
+  { name: 'Player Portal', id: 'player-portal' },
+  { name: 'Services', id: 'services' },
+  { name: 'Player Applications', id: 'player-applications' },
+  { name: 'Financial Advisors', id: 'financial-advice' },
+];
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const { isOpen, onToggle, onClose } = useDisclosure();
 
   useEffect(() => {
-    setMounted(true);
-    
     const handleScroll = () => {
-      const isScrolled = window.scrollY > 10;
-      setScrolled(isScrolled);
+      setScrolled(window.scrollY > 10);
     };
 
     window.addEventListener('scroll', handleScroll);
@@ -30,13 +35,12 @@ export default function Navbar() {
     }
   };
 
-  const handleNavClick = (item: { name: string; id: string; href?: string }) => {
-    if (item.href) {
-      // Navigate to external page
-      window.location.href = item.href;
+  const handleNavClick = (link: { id: string; href?: string }) => {
+    onClose();
+    if (link.href) {
+      window.location.href = link.href;
     } else {
-      // Scroll to section on current page
-      scrollToSection(item.id);
+      scrollToSection(link.id);
     }
   };
 
@@ -49,13 +53,13 @@ export default function Navbar() {
       <Box 
         as="nav" 
         py={4} 
-        borderBottom={scrolled ? "1px solid" : "none"}
-        borderColor={scrolled ? "neutral.200" : "transparent"}
+        borderBottom={scrolled || isOpen ? "1px solid" : "none"}
+        borderColor={scrolled || isOpen ? "neutral.200" : "transparent"}
         position="fixed"
         top={0}
         width="100%"
-        bg={scrolled ? "rgba(255, 255, 255, 0.5)" : "transparent"} 
-        backdropFilter={scrolled ? "blur(10px)" : "none"}
+        bg={scrolled || isOpen ? "rgba(255, 255, 255, 0.92)" : "transparent"} 
+        backdropFilter={scrolled || isOpen ? "blur(10px)" : "none"}
         transition="all 0.3s ease"
         zIndex={1000}
         boxShadow={scrolled ? "0 2px 10px rgba(0, 0, 0, 0.05)" : "none"}
@@ -68,59 +72,104 @@ export default function Navbar() {
                 transition={{ type: "spring", stiffness: 400, damping: 10 }}
               >
                 <Box 
-                  mr={10}
+                  mr={{ base: 0, md: 10 }}
                   cursor="pointer"
-                  onClick={() => window.location.href = window.location.pathname}
+                  onClick={() => {
+                    onClose();
+                    window.location.href = window.location.pathname;
+                  }}
                   position="relative"
                   width={{ base: "160px", md: "240px" }}
                   height={{ base: "40px", md: "55px" }}
                   overflow="visible"
                 >
                   <img 
-                    src={scrolled ? "/images/logos/affillia-logo-light.svg" : "/images/logos/affillia-logo-white.svg"}
+                    src={scrolled || isOpen ? "/images/logos/affillia-logo-light.svg" : "/images/logos/affillia-logo-white.svg"}
                     alt="Affillia Sports" 
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
                 </Box>
               </motion.div>
-              
-              <HStack spacing={20} fontFamily="heading" display={{ base: 'none', md: 'flex' }}>
-                {[
-                  { name: 'About Us', id: 'about' },
-                  { name: 'Player Portal', id: 'player-portal' },
-                  { name: 'Services', id: 'services' },
-                  { name: 'Player Applications', id: 'player-applications' },
-                  { name: 'Financial Advisors', id: 'financial-advice' }
-                ].map((link, index) => (
-                  <motion.div 
-                    key={link.id}
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ 
-                      duration: 0.5, 
-                      delay: 0.3 + (index * 0.1),
-                      ease: [0.25, 0.1, 0.25, 1.0]
-                    }}
-                    whileHover={{ y: -3 }}
+            </Flex>
+
+            {/* Desktop links */}
+            <HStack spacing={20} fontFamily="heading" display={{ base: 'none', md: 'flex' }}>
+              {NAV_LINKS.map((link, index) => (
+                <motion.div 
+                  key={link.id}
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ 
+                    duration: 0.5, 
+                    delay: 0.3 + (index * 0.1),
+                    ease: [0.25, 0.1, 0.25, 1.0]
+                  }}
+                  whileHover={{ y: -3 }}
+                >
+                  <Text 
+                    fontSize="lg" 
+                    fontWeight="400" 
+                    color={scrolled ? "neutral.900" : "white"}
+                    cursor="pointer"
+                    onClick={() => handleNavClick(link)}
+                    _hover={{ color: scrolled ? "neutral.800" : "whiteAlpha.800", textDecoration: "underline" }}
+                    transition="color 0.2s ease"
                   >
-                    <Text 
-                      fontSize="lg" 
-                      fontWeight="400" 
-                      color={scrolled ? "neutral.900" : "white"}
+                    {link.name}
+                  </Text>
+                </motion.div>
+              ))}
+            </HStack>
+
+            {/* Mobile hamburger */}
+            <IconButton
+              aria-label={isOpen ? 'Close menu' : 'Open menu'}
+              icon={isOpen ? <HiOutlineX /> : <HiOutlineMenu />}
+              onClick={onToggle}
+              display={{ base: 'flex', md: 'none' }}
+              variant="ghost"
+              color={scrolled || isOpen ? "neutral.900" : "white"}
+              fontSize="26px"
+              size="lg"
+              _hover={{ bg: scrolled || isOpen ? "blackAlpha.50" : "whiteAlpha.200" }}
+            />
+          </Flex>
+        </Container>
+
+        {/* Mobile dropdown menu */}
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              style={{ overflow: 'hidden' }}
+            >
+              <Container maxW="1240px" pb={4}>
+                <VStack spacing={1} align="stretch" fontFamily="heading">
+                  {NAV_LINKS.map((link) => (
+                    <Text
+                      key={link.id}
+                      fontSize="lg"
+                      py={3}
+                      px={4}
+                      color="neutral.800"
                       cursor="pointer"
+                      textAlign="center"
+                      borderRadius="md"
+                      _hover={{ bg: "blackAlpha.50" }}
                       onClick={() => handleNavClick(link)}
-                      _hover={{ color: scrolled ? "neutral.800" : "whiteAlpha.800", textDecoration: "underline" }}
-                      transition="color 0.2s ease"
                     >
                       {link.name}
                     </Text>
-                  </motion.div>
-                ))}
-              </HStack>
-            </Flex>
-          </Flex>
-        </Container>
+                  ))}
+                </VStack>
+              </Container>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </Box>
     </motion.div>
   );
-} 
+}
