@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
+import { validateCvFile, formatFileSize } from '@/lib/applications/cv-file';
+import { FormErrorBoundary } from './FormErrorBoundary';
 import {
   Modal,
   ModalOverlay,
@@ -89,63 +91,6 @@ interface RetryConfig {
   baseDelay: number;
   maxDelay: number;
   backoffMultiplier: number;
-}
-
-const ALLOWED_FILE_TYPES = [
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'text/plain'
-];
-
-const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx', 'txt'];
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-
-// Utility function for formatting file sizes
-const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-};
-
-// Error boundary component for the form
-class FormErrorBoundary extends React.Component<
-  { children: React.ReactNode; fallback?: React.ReactNode },
-  { hasError: boolean }
-> {
-  constructor(props: { children: React.ReactNode; fallback?: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError(error: Error) {
-    console.error('PlayerApplicationForm Error:', error);
-    return { hasError: true };
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('PlayerApplicationForm Error Details:', error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return this.props.fallback || (
-        <Alert status="error" borderRadius="md">
-          <AlertIcon />
-          <Box>
-            <AlertTitle>Form Error</AlertTitle>
-            <AlertDescription>
-              Something went wrong with the application form. Please refresh the page and try again.
-            </AlertDescription>
-          </Box>
-        </Alert>
-      );
-    }
-
-    return this.props.children;
-  }
 }
 
 export default function PlayerApplicationForm({ isOpen, onClose }: PlayerApplicationFormProps) {
@@ -567,69 +512,7 @@ export default function PlayerApplicationForm({ isOpen, onClose }: PlayerApplica
     }));
   }, [formData, ageCalculation, uploadedFile]); // Remove validateForm from dependencies to prevent infinite loop
 
-  const validateFile = useCallback((file: File): string | null => {
-    // Check for empty files first
-    if (file.size === 0) {
-      return 'The selected file appears to be empty. Please choose a valid CV file with content.';
-    }
-
-    // Check file size (more specific error messages)
-    if (file.size > MAX_FILE_SIZE) {
-      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
-      return `File size is ${fileSizeMB}MB, but maximum allowed is 10MB. Please compress your file or choose a smaller file.`;
-    }
-
-    // Check minimum file size (avoid tiny files that might be corrupted)
-    if (file.size < 100) {
-      return 'File is too small to be a valid CV. Please select a proper CV document.';
-    }
-
-    // Check file type with detailed error messages
-    const extension = file.name.split('.').pop()?.toLowerCase();
-    if (!extension) {
-      return 'File must have a valid extension. Please upload a PDF, DOC, DOCX, or TXT file.';
-    }
-
-    if (!ALLOWED_EXTENSIONS.includes(extension)) {
-      return `File type ".${extension}" is not supported. Please upload a PDF, DOC, DOCX, or TXT file only.`;
-    }
-
-    // Additional MIME type validation for security
-    if (!ALLOWED_FILE_TYPES.includes(file.type) && file.type !== '') {
-      return `File type "${file.type}" is not allowed. Please ensure your file is a valid PDF, DOC, DOCX, or TXT document.`;
-    }
-
-    // File name validation with specific guidance
-    if (file.name.length > 255) {
-      return `File name is ${file.name.length} characters long, but maximum allowed is 255. Please rename your file to be shorter.`;
-    }
-
-    // Check for potentially problematic characters in filename
-    const problematicChars = /[<>:"/\\|?*]/;
-    if (problematicChars.test(file.name)) {
-      const foundChars = file.name.match(problematicChars)?.join(', ') || '';
-      return `File name contains invalid characters (${foundChars}). Please rename your file without these special characters.`;
-    }
-
-    // Check for suspicious file names
-    const suspiciousPatterns = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
-    const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
-    if (suspiciousPatterns.test(nameWithoutExt)) {
-      return 'File name is not allowed. Please rename your file and try again.';
-    }
-
-    // Check for very long file names that might cause issues
-    if (nameWithoutExt.length > 200) {
-      return 'File name is too long. Please use a shorter, more descriptive name for your CV.';
-    }
-
-    // Validate file extension matches content type where possible
-    if (extension === 'pdf' && file.type && !file.type.includes('pdf')) {
-      return 'File extension and content type do not match. Please ensure you are uploading a valid PDF file.';
-    }
-
-    return null;
-  }, [ageCalculation]);
+  const validateFile = useCallback((file: File): string | null => validateCvFile(file), []);
 
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
